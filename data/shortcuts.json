@@ -1,1 +1,473 @@
-
+[
+  {
+    "id": "three-clipboards",
+    "title": "3 Clipboard.s",
+    "desc": "A power-user text workspace with permanent and temporary clipboard history, advanced search and replace, text transforms, OCR, QR conversion, and more.",
+    "link": "https://www.icloud.com/shortcuts/fa04535636564f13be1fd4a22a3697b4",
+    "badge": "Advanced clipboard",
+    "icon": "note",
+    "category": [
+      "Featured",
+      "Productivity",
+      "Utilities",
+      "Clipboard",
+      "Documents"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/3-clipboards",
+    "linkType": "shortcut"
+  },
+  {
+    "id": "all-in-one-utilities",
+    "title": "All-in-One Utilities",
+    "desc": "A large bundle of tools including QR generation, text-to-speech, shortcut backups, GIF conversion, parked-car location, file vault, search tools, and more. Open the source listing for install details.",
+    "link": "https://routinehub.co/shortcut/1939/",
+    "badge": "Large utility bundle",
+    "icon": "spark",
+    "category": [
+      "Featured",
+      "Utilities",
+      "Productivity",
+      "Automation"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/all-in-one-utilities",
+    "linkType": "source"
+  },
+  {
+    "id": "immersive-translator",
+    "title": "Immersive Translator",
+    "desc": "Translate webpages, images, and PDFs while preserving layout. Some translation providers may require account credentials or API keys.",
+    "link": "https://www.icloud.com/shortcuts/49b2ff5af20c4911b9dffca6f397366a",
+    "badge": "Translate pages & PDFs",
+    "icon": "note",
+    "category": [
+      "Featured",
+      "Productivity",
+      "Translation",
+      "Accessibility",
+      "Documents"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/immersive-translator",
+    "linkType": "shortcut"
+  },
+  {
+    "id": "ios-soundboard",
+    "title": "iOS Soundboard",
+    "desc": "A multi-part soundboard for iOS alert tones, classic alerts, ringtones, bedtime sounds, and nearly 150 system sounds.",
+    "link": "https://www.icloud.com/shortcuts/3e97aec1dbc2412cb96ad9e9df61dc5f",
+    "badge": "System sound collection",
+    "icon": "music",
+    "category": [
+      "Soundboard",
+      "Entertainment",
+      "Utilities"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/ios-soundboard",
+    "linkType": "shortcut"
+  },
+  {
+    "id": "photos-toolkit",
+    "title": "Photos ToolKit",
+    "desc": "Batch resize, convert, rotate, combine, overlay, flip, mark up, remove backgrounds, make GIFs, extract text, and encode images.",
+    "link": "https://www.icloud.com/shortcuts/2b91288fcb1d4324a038f6465d7e8ec4",
+    "badge": "Batch image tools",
+    "icon": "image",
+    "category": [
+      "Featured",
+      "Photography",
+      "Utilities",
+      "Creativity"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/photos-toolkit",
+    "linkType": "shortcut"
+  },
+  {
+    "id": "quick-qr-generator",
+    "title": "Quick QR Generator",
+    "desc": "Build customizable QR codes for URLs, Wi-Fi, files, images, contact cards, calendar events, locations, and more. Image uploads use an external service.",
+    "link": "https://www.icloud.com/shortcuts/9ad6daaf0d2f4a8b914883c29435e7b3",
+    "badge": "Versatile QR tool",
+    "icon": "scan",
+    "category": [
+      "Featured",
+      "Utilities",
+      "Sharing",
+      "Creativity"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/quick-qr-generator",
+    "linkType": "shortcut"
+  },
+  {
+    "id": "productivity:save-recipe-and-groceries-3",
+    "title": "Save Recipe and Groceries",
+    "desc": "Save a recipe and add its ingredients to a grocery list.",
+    "link": "https://www.icloud.com/shortcuts/f27d649af1aa47108a2f274136de3a5a",
+    "badge": "Useful",
+    "icon": "note",
+    "category": [
+      "Featured",
+      "Productivity",
+      "Food & Cooking",
+      "Reminders"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "scsettings",
+    "title": "SCSettings",
+    "desc": "A power-user menu for settings shortcuts and controls, including selected privacy/settings pages, Wi-Fi and Bluetooth controls, and device information. Review requested permissions before use.",
+    "link": "https://www.icloud.com/shortcuts/56253e41c4f44ca58a8bdc81c6dc35ab",
+    "badge": "Deep settings menu",
+    "icon": "scan",
+    "category": [
+      "Featured",
+      "Utilities",
+      "System",
+      "Automation"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/scsettings",
+    "linkType": "shortcut"
+  },
+  {
+    "id": "productivity:smart-to-do-list-1",
+    "title": "Smart To-Do List",
+    "desc": "Turn spoken tasks into an organized to-do list in Notes. Needs Apple Intelligence.",
+    "link": "https://www.icloud.com/shortcuts/d7abb2a5a4034ee9bbc135ccc75a1606",
+    "badge": "AI",
+    "icon": "note",
+    "category": [
+      "Featured",
+      "Productivity",
+      "AI",
+      "Notes"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "song-link",
+    "title": "Song.Link",
+    "desc": "Convert a song link into equivalent links for other streaming services; can work from a shared URL, clipboard, currently playing track, Shazam result, or a search.",
+    "link": "https://www.icloud.com/shortcuts/b5fd0534b75a4faeac7a1f8a22a06f92",
+    "badge": "Cross-platform music links",
+    "icon": "music",
+    "category": [
+      "Featured",
+      "Music",
+      "Sharing",
+      "Utilities"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/songlink",
+    "linkType": "shortcut"
+  },
+  {
+    "id": "play-from-soundboard",
+    "title": "Play from soundboard",
+    "desc": "Presents a menu of embedded sounds and plays the selected sound. The source page marks this shortcut as member-access content.",
+    "link": "https://matthewcassinelli.com/shortcuts/play-from-soundboard/",
+    "badge": "Member access",
+    "icon": "music",
+    "category": [
+      "Soundboard",
+      "Entertainment"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://matthewcassinelli.com/shortcuts/play-from-soundboard/",
+    "linkType": "source"
+  },
+  {
+    "id": "productivity:calendar-alarms-0",
+    "title": "Calendar Alarms",
+    "desc": "Add alarms for calendar events so a notification is harder to miss.",
+    "link": "https://www.icloud.com/shortcuts/f6e4395d19ad4ef2b099e9522b5efcb3",
+    "badge": "New",
+    "icon": "calendar",
+    "category": [
+      "Productivity",
+      "Calendar",
+      "Automation"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "productivity:calendar-to-spreadsheet-7",
+    "title": "Calendar to Spreadsheet",
+    "desc": "Export calendar events into a spreadsheet you can review or share.",
+    "link": "https://www.icloud.com/shortcuts/6aeae662cd5e40a982ec8b9bb276c744",
+    "badge": "Useful",
+    "icon": "calendar",
+    "category": [
+      "Productivity",
+      "Calendar",
+      "Data Export"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "productivity:clipboard-history-10",
+    "title": "Clipboard History",
+    "desc": "Save copied text with a date tag and pull back the last few clips.",
+    "link": "https://www.icloud.com/shortcuts/10d6e0b3cb32474d9aa3fb057ec7b82d",
+    "badge": "Fast",
+    "icon": "note",
+    "category": [
+      "Productivity",
+      "Utilities",
+      "Clipboard"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "resize-for-print",
+    "title": "Resize for Print",
+    "desc": "Set exact print sizing for images, multi-page PDFs, Apple Notes, and text files, then create a print-ready PDF.",
+    "link": "https://www.icloud.com/shortcuts/b0bf995a458a42bd8fc70abdf9d3fe4c",
+    "badge": "Print-ready PDFs",
+    "icon": "image",
+    "category": [
+      "Productivity",
+      "Files",
+      "Photography",
+      "Documents"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/resize-for-print",
+    "linkType": "shortcut"
+  },
+  {
+    "id": "productivity:save-recipes-to-notes-2",
+    "title": "Save Recipes to Notes",
+    "desc": "Pull ingredients and steps from a recipe photo or video into Notes.",
+    "link": "https://www.icloud.com/shortcuts/27f408939331434494184c200b5f21b1",
+    "badge": "AI",
+    "icon": "note",
+    "category": [
+      "Productivity",
+      "Food & Cooking",
+      "Notes"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "productivity:sort-apple-notes-6",
+    "title": "Sort Apple Notes",
+    "desc": "Sort notes so a long Notes library is easier to scan.",
+    "link": "https://www.icloud.com/shortcuts/61a6e4d3c8c84f6997df6c5b475d5117",
+    "badge": "Fast",
+    "icon": "note",
+    "category": [
+      "Productivity",
+      "Organization",
+      "Notes"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "productivity:sports-schedule-8",
+    "title": "Sports Schedule",
+    "desc": "Add an upcoming sports schedule to Calendar.",
+    "link": "https://www.icloud.com/shortcuts/442d7133079049a0a4781f8d7cee8588",
+    "badge": "New",
+    "icon": "calendar",
+    "category": [
+      "Productivity",
+      "Calendar",
+      "Sports"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "productivity:summarize-a-document-4",
+    "title": "Summarize a Document",
+    "desc": "Make a short summary of a document on device. Needs Apple Intelligence.",
+    "link": "https://www.icloud.com/shortcuts/5d30770b12cc453c9d9465baa5354a6f",
+    "badge": "AI",
+    "icon": "spark",
+    "category": [
+      "Productivity",
+      "Documents",
+      "AI"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "productivity:warranty-tracker-11",
+    "title": "Warranty Tracker",
+    "desc": "Store product warranty details on your iPhone so you can find them later.",
+    "link": "https://www.icloud.com/shortcuts/bc7aed8342a04afc885097aba7cd4ff6",
+    "badge": "Useful",
+    "icon": "bell",
+    "category": [
+      "Productivity",
+      "Organization"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "utilities:action-button-extras-7",
+    "title": "Action Button Extras",
+    "desc": "Add more Action Button choices by pairing it with the volume keys.",
+    "link": "https://www.icloud.com/shortcuts/44c14f385ea4476f920a9560907451d7",
+    "badge": "New",
+    "icon": "spark",
+    "category": [
+      "Utilities",
+      "Automation",
+      "Personalization"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "utilities:download-icloud-photos-5",
+    "title": "Download iCloud Photos",
+    "desc": "Download original copies of your iCloud photos onto this device.",
+    "link": "https://www.icloud.com/shortcuts/a7d9e9d6e4ba47aebe25a9764fe4561b",
+    "badge": "Useful",
+    "icon": "image",
+    "category": [
+      "Files",
+      "Photography",
+      "Utilities"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "join-shortcuts",
+    "title": "Join Shortcuts",
+    "desc": "Combine several shortcuts into one by selecting insertion points. Requires Shortcut Source Helper.",
+    "link": "https://www.icloud.com/shortcuts/34b320f78bb647cf9ade3dcc822a8848",
+    "badge": "Shortcut builder",
+    "icon": "spark",
+    "category": [
+      "Developer",
+      "Utilities",
+      "Automation"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/join-shortcuts",
+    "linkType": "shortcut"
+  },
+  {
+    "id": "photo-details",
+    "title": "Photo Details",
+    "desc": "Inspect metadata for one or more images, including filename, file type, size, resolution, and EXIF/TIFF camera details.",
+    "link": "https://www.icloud.com/shortcuts/d1da9ea881214d628f44374ff5d6428a",
+    "badge": "Photo metadata",
+    "icon": "image",
+    "category": [
+      "Photography",
+      "Utilities",
+      "Documents"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/photo-details",
+    "linkType": "shortcut"
+  },
+  {
+    "id": "shortcut-source-helper",
+    "title": "Shortcut Source Helper",
+    "desc": "Inspect a shortcut’s property-list source or create a shortcut from a plist file; useful for advanced editing and developer workflows.",
+    "link": "https://www.icloud.com/shortcuts/7125fde0360a49f5994d02fb6d1b1fbd",
+    "badge": "Developer utility",
+    "icon": "note",
+    "category": [
+      "Developer",
+      "Utilities"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/shortcut-source-helper",
+    "linkType": "shortcut"
+  },
+  {
+    "id": "shortcut-source-tool",
+    "title": "Shortcut Source Tool",
+    "desc": "Advanced tool for reviewing, converting, and editing shortcut source, with a searchable HTML web review. May require companion apps for some features.",
+    "link": "https://ioshaven.com/shortcut/shortcut-source-tool",
+    "badge": "Developer utility",
+    "icon": "note",
+    "category": [
+      "Developer",
+      "Utilities"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/shortcut-source-tool",
+    "linkType": "source"
+  },
+  {
+    "id": "shortcuts-icon-downloader",
+    "title": "Shortcuts Icon Downloader",
+    "desc": "Create an image or GIF with a chosen glyph in a Shortcuts-style color, then save it, create a vCard menu, or copy Base64 output.",
+    "link": "https://www.icloud.com/shortcuts/cc76c8fd92e9451791490115958db7b5",
+    "badge": "Icon & GIF creator",
+    "icon": "image",
+    "category": [
+      "Creativity",
+      "Utilities",
+      "Personalization"
+    ],
+    "dateAdded": "2026-10-12T10:04:00-07:00",
+    "source": "https://ioshaven.com/shortcut/shortcuts-icon-downloader",
+    "linkType": "shortcut"
+  },
+  {
+    "id": "utilities:frame-a-screenshot-4",
+    "title": "Frame a Screenshot",
+    "desc": "Add a device frame to a screenshot, then save or share it.",
+    "link": "https://www.icloud.com/shortcuts/037f32224a354a01b2a809c805da5ca1",
+    "badge": "Popular",
+    "icon": "image",
+    "category": [
+      "Creativity",
+      "Photography"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "wellness:smarter-wake-up-3",
+    "title": "Smarter Wake Up",
+    "desc": "Build a morning alarm around your first tasks. Needs Apple Intelligence.",
+    "link": "https://www.icloud.com/shortcuts/c2123b6de8e4426cb96554dea5135b16",
+    "badge": "AI",
+    "icon": "bell",
+    "category": [
+      "Wellness",
+      "Automation",
+      "AI"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  },
+  {
+    "id": "wellness:watch-wallpaper-5",
+    "title": "Watch Wallpaper",
+    "desc": "Swap the Apple Watch wallpaper on a schedule from a folder of images.",
+    "link": "https://www.icloud.com/shortcuts/2ae2f66905c24762a9ae452a92ac8624",
+    "badge": "New",
+    "icon": "image",
+    "category": [
+      "Personalization",
+      "Automation"
+    ],
+    "dateAdded": "2026-10-08T10:26:00-07:00",
+    "source": "UNKNOWN"
+  }
+]
