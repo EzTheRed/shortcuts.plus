@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Shortcuts Plus icon">
+<defs>
+<linearGradient id="bottomBase" x1="194" y1="638" x2="830" y2="638" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#17496B"/>
+<stop offset=".23" stop-color="#167F98"/>
+<stop offset=".47" stop-color="#20B9B0"/>
+<stop offset=".69" stop-color="#119ED8"/>
+<stop offset=".86" stop-color="#087FF3"/>
+<stop offset="1" stop-color="#0783FF"/>
+</linearGradient>
+<radialGradient id="bottomGreen" cx="505" cy="832" r="345" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#36D0A5"/>
+<stop offset=".48" stop-color="#2BC9AC" stop-opacity=".78"/>
+<stop offset="1" stop-color="#28C8B0" stop-opacity="0"/>
+</radialGradient>
+<linearGradient id="topBase" x1="194" y1="386" x2="830" y2="386" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#FF655B"/>
+<stop offset=".2" stop-color="#FF5E83"/>
+<stop offset=".47" stop-color="#EF5DC1"/>
+<stop offset=".69" stop-color="#AB559E"/>
+<stop offset="1" stop-color="#49316A"/>
+</linearGradient>
+<radialGradient id="topPink" cx="507" cy="169" r="430" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#FB5BCF" stop-opacity=".98"/>
+<stop offset=".48" stop-color="#F65DC1" stop-opacity=".5"/>
+<stop offset="1" stop-color="#F65DC1" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="topBlueBlend" cx="718" cy="526" r="352" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#168AFF" stop-opacity=".84"/>
+<stop offset=".46" stop-color="#4D82D8" stop-opacity=".43"/>
+<stop offset="1" stop-color="#4D82D8" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="topLowerTint" cx="489" cy="589" r="265" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#C978A7" stop-opacity=".8"/>
+<stop offset="1" stop-color="#C978A7" stop-opacity="0"/>
+</radialGradient>
+<path id="bottomDiamond" d="M512 389 C540 389 567 401 591 419 L795 579 C840 614 840 660 795 694 L590 852 C544 887 480 887 434 852 L229 694 C184 660 184 614 229 579 L433 419 C457 401 484 389 512 389 Z"/>
+<path id="topDiamond" d="M512 137 C540 137 566 148 592 168 L797 326 C840 359 840 410 797 443 L589 601 C544 635 480 635 435 601 L227 443 C184 410 184 359 227 326 L432 168 C458 148 484 137 512 137 Z"/>
+<clipPath id="topClip"><use href="#topDiamond"/></clipPath>
+</defs>
+<rect width="1024" height="1024" rx="220" fill="#1C1F5A"/>
+<g>
+<use href="#bottomDiamond" fill="url(#bottomBase)"/>
+<use href="#bottomDiamond" fill="url(#bottomGreen)"/>
+</g>
+<g clip-path="url(#topClip)">
+<rect x="180" y="130" width="670" height="515" fill="url(#topBase)"/>
+<rect x="180" y="130" width="670" height="515" fill="url(#topPink)"/>
+<rect x="180" y="130" width="670" height="515" fill="url(#topBlueBlend)"/>
+<rect x="180" y="130" width="670" height="515" fill="url(#topLowerTint)"/>
+</g>
+<use href="#topDiamond" fill="none" stroke="#E65CB3" stroke-opacity=".08" stroke-width="1"/>
+<path d="M805 60 V350 M660 205 H950" fill="none" stroke="#FFFFFF" stroke-width="76" stroke-linecap="round"/>
+</svg>
