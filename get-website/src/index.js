@@ -1,5 +1,8 @@
 const MAX_URL_LENGTH = 2048;
 const MAX_HTML_BYTES = 2 * 1024 * 1024;
+const MAX_ASSET_BYTES = 1024 * 1024;
+const MAX_TOTAL_ASSET_BYTES = 4 * 1024 * 1024;
+const MAX_ASSETS = 24;
 const MAX_REDIRECTS = 5;
 
 function json(data, status = 200) {
@@ -18,180 +21,247 @@ function json(data, status = 200) {
 
 function isPrivateOrLocalHost(hostname) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-
-  if (
-    host === "localhost" ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".local") ||
-    host.endsWith(".internal") ||
-    host.endsWith(".test") ||
-    host.endsWith(".invalid") ||
-    host.endsWith(".example")
-  ) return true;
-
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") ||
+      host.endsWith(".internal") || host.endsWith(".test") || host.endsWith(".invalid") ||
+      host.endsWith(".example")) return true;
   if (host.includes(":")) {
-    return (
-      host === "::" ||
-      host === "::1" ||
-      host.startsWith("fc") ||
-      host.startsWith("fd") ||
-      /^fe[89ab]/i.test(host) ||
-      host.startsWith("::ffff:")
-    );
+    return host === "::" || host === "::1" || host.startsWith("fc") ||
+      host.startsWith("fd") || /^fe[89ab]/i.test(host) || host.startsWith("::ffff:");
   }
-
   if (/^[0-9.]+$/.test(host)) {
-    const parts = host.split(".").map(Number);
-    if (parts.length !== 4 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return true;
-    const [a, b] = parts;
-    return (
-      a === 0 || a === 10 || a === 127 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
+    const p = host.split(".").map(Number);
+    if (p.length !== 4 || p.some(n => !Number.isInteger(n) || n < 0 || n > 255)) return true;
+    const [a, b] = p;
+    return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
       (a === 192 && (b === 0 || b === 168)) ||
-      (a === 198 && (b === 18 || b === 19)) ||
-      a >= 224
-    );
+      (a === 198 && (b === 18 || b === 19)) || a >= 224;
   }
-
   return false;
 }
 
 function validateTarget(value) {
-  if (typeof value !== "string" || value.length === 0 || value.length > MAX_URL_LENGTH) {
+  if (typeof value !== "string" || !value || value.length > MAX_URL_LENGTH) {
     throw new Error("Provide a webpage URL no longer than 2048 characters.");
   }
-
-  let url;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new Error("The supplied URL is not valid.");
-  }
-
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error("Only HTTP and HTTPS webpage URLs are supported.");
-  }
-  if (url.username || url.password) {
-    throw new Error("URLs containing usernames or passwords are not allowed.");
-  }
-  if (isPrivateOrLocalHost(url.hostname)) {
-    throw new Error("Local, private, and reserved network addresses are not allowed.");
-  }
-
-  url.hash = "";
-  return url;
+  let u;
+  try { u = new URL(value); } catch { throw new Error("The supplied URL is not valid."); }
+  if (!["http:", "https:"].includes(u.protocol)) throw new Error("Only HTTP and HTTPS URLs are supported.");
+  if (u.username || u.password) throw new Error("URLs containing usernames or passwords are not allowed.");
+  if (isPrivateOrLocalHost(u.hostname)) throw new Error("Local, private, and reserved network addresses are not allowed.");
+  u.hash = "";
+  return u;
 }
 
-async function fetchPublicPage(initialUrl) {
-  let target = initialUrl;
+function makeContext() {
+  return { assets: 0, bytes: 0, skipped: [] };
+}
 
-  for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
+async function fetchResource(startUrl, context, kind) {
+  let target = validateTarget(startUrl);
+  for (let i = 0; i <= MAX_REDIRECTS; i++) {
+    const response = await fetch(target.href, {
+      method: "GET",
+      redirect: "manual",
+      headers: {
+        accept: kind === "css" ? "text/css,*/*;q=0.1" :
+          kind === "js" ? "text/javascript,application/javascript,*/*;q=0.1" : "*/*;q=0.1",
+        "user-agent": "ShortcutsPlus-PagePackager/1.0"
+      }
+    });
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      const loc = response.headers.get("location");
+      if (!loc) throw new Error("A remote resource redirected without a destination.");
+      if (i === MAX_REDIRECTS) throw new Error("A remote resource redirected too many times.");
+      target = validateTarget(new URL(loc, target).href);
+      continue;
+    }
+    if (!response.ok) throw new Error("Resource fetch returned HTTP " + response.status + ".");
+    const len = Number(response.headers.get("content-length") || 0);
+    if (len > MAX_ASSET_BYTES) throw new Error("A resource exceeded the 1 MB size limit.");
+    const text = await response.text();
+    const size = new TextEncoder().encode(text).byteLength;
+    if (size > MAX_ASSET_BYTES) throw new Error("A resource exceeded the 1 MB size limit.");
+    context.assets++;
+    context.bytes += size;
+    if (context.assets > MAX_ASSETS) throw new Error("The page references more than 24 external CSS/JS resources.");
+    if (context.bytes > MAX_TOTAL_ASSET_BYTES) throw new Error("External CSS/JS resources exceed the 4 MB total limit.");
+    return { text, url: target.href, contentType: response.headers.get("content-type") || "" };
+  }
+  throw new Error("Unable to fetch remote resource.");
+}
+
+function absoluteCssUrls(css, stylesheetUrl) {
+  return css.replace(/url\(\s*(['"]?)(.*?)\1\s*\)/gi, (all, quote, raw) => {
+    const value = raw.trim();
+    if (!value || /^(data:|blob:|#|about:)/i.test(value)) return all;
+    try {
+      const absolute = new URL(value, stylesheetUrl);
+      if (!["http:", "https:"].includes(absolute.protocol)) return all;
+      return 'url("' + absolute.href.replace(/"/g, "%22") + '")';
+    } catch { return all; }
+  });
+}
+
+async function inlineCssImports(css, stylesheetUrl, context, depth = 0) {
+  if (depth >= 3) return absoluteCssUrls(css, stylesheetUrl);
+  const importPattern = /@import\s+(?:url\(\s*)?(['"])(.*?)\1\s*\)?[^;]*;/gi;
+  let output = "";
+  let last = 0;
+  for (const match of css.matchAll(importPattern)) {
+    output += css.slice(last, match.index);
+    last = match.index + match[0].length;
+    try {
+      const importUrl = new URL(match[2], stylesheetUrl);
+      const fetched = await fetchResource(importUrl.href, context, "css");
+      if (!/text\/css/i.test(fetched.contentType)) throw new Error("Imported resource is not CSS.");
+      output += "\n/* Inlined @import: " + fetched.url.replace(/\*\//g, "") + " */\n";
+      output += await inlineCssImports(fetched.text, fetched.url, context, depth + 1);
+    } catch (error) {
+      context.skipped.push({ type: "css-import", url: match[2], reason: error.message });
+      output += match[0];
+    }
+  }
+  output += css.slice(last);
+  return absoluteCssUrls(output, stylesheetUrl);
+}
+
+function safeInlineText(value, closingTag) {
+  return value.replace(new RegExp("</" + closingTag, "gi"), "<\\/" + closingTag);
+}
+
+async function packageHtml(sourceHtml, pageUrl) {
+  const context = makeContext();
+  let html = sourceHtml;
+
+  // Inline linked stylesheets.
+  const linkPattern = /<link\b([^>]*?)\bhref\s*=\s*(["'])(.*?)\2([^>]*)>/gi;
+  const linkMatches = [...html.matchAll(linkPattern)];
+  for (const match of linkMatches) {
+    const attrs = match[1] + " " + match[4];
+    if (!/\brel\s*=\s*["'][^"']*stylesheet[^"']*["']/i.test(attrs)) continue;
+    const original = match[0];
+    try {
+      const resourceUrl = new URL(match[3], pageUrl);
+      const fetched = await fetchResource(resourceUrl.href, context, "css");
+      if (!/text\/css/i.test(fetched.contentType)) throw new Error("Linked resource is not CSS.");
+      const css = await inlineCssImports(fetched.text, fetched.url, context);
+      const replacement = "<style data-inlined-from=\"" + fetched.url.replace(/&/g, "&amp;").replace(/"/g, "&quot;") + "\">\n" +
+        safeInlineText(css, "style") + "\n</style>";
+      html = html.replace(original, replacement);
+    } catch (error) {
+      context.skipped.push({ type: "stylesheet", url: match[3], reason: error.message });
+    }
+  }
+
+  // Inline external classic and module scripts. Module imports that are relative
+  // continue to resolve against the injected base URL.
+  const scriptPattern = /<script\b([^>]*?)\bsrc\s*=\s*(["'])(.*?)\2([^>]*)>\s*<\/script\s*>/gi;
+  const scriptMatches = [...html.matchAll(scriptPattern)];
+  for (const match of scriptMatches) {
+    const original = match[0];
+    try {
+      const resourceUrl = new URL(match[3], pageUrl);
+      const fetched = await fetchResource(resourceUrl.href, context, "js");
+      if (!/(javascript|ecmascript|text\/plain)/i.test(fetched.contentType)) {
+        throw new Error("Linked resource did not return JavaScript.");
+      }
+      const replacement = "<script" + match[1] + match[4] + " data-inlined-from=\"" +
+        fetched.url.replace(/&/g, "&amp;").replace(/"/g, "&quot;") + "\">\n" +
+        safeInlineText(fetched.text, "script") + "\n</script>";
+      html = html.replace(original, replacement);
+    } catch (error) {
+      context.skipped.push({ type: "script", url: match[3], reason: error.message });
+    }
+  }
+
+  // Resolve URLs inside inline style attributes and style blocks.
+  html = html.replace(/\bstyle\s*=\s*(["'])(.*?)\1/gi, (all, q, css) => {
+    return "style=" + q + absoluteCssUrls(css, pageUrl).replace(new RegExp(q, "g"), q === '"' ? "&quot;" : "&#39;") + q;
+  });
+  const stylePattern = /(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/gi;
+  html = html.replace(stylePattern, (all, open, css, close) =>
+    open + safeInlineText(absoluteCssUrls(css, pageUrl), "style") + close
+  );
+
+  const safeBase = pageUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  const baseTag = '<base href="' + safeBase + '">';
+  html = html.replace(/<base\b[^>]*>/i, "");
+  if (/<head\b[^>]*>/i.test(html)) html = html.replace(/<head\b[^>]*>/i, head => head + "\n" + baseTag);
+  else html = baseTag + "\n" + html;
+
+  return { html, context };
+}
+
+async function fetchPage(startUrl) {
+  let target = startUrl;
+  for (let i = 0; i <= MAX_REDIRECTS; i++) {
     target = validateTarget(target.href);
     const response = await fetch(target.href, {
       method: "GET",
       redirect: "manual",
       headers: {
-        "accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1",
-        "user-agent": "ShortcutsPlus-PageFetcher/1.0"
+        accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1",
+        "user-agent": "ShortcutsPlus-PagePackager/1.0"
       }
     });
-
     if ([301, 302, 303, 307, 308].includes(response.status)) {
-      const location = response.headers.get("location");
-      if (!location) throw new Error("The remote site returned a redirect without a destination.");
-      if (redirects === MAX_REDIRECTS) throw new Error("The remote site redirected too many times.");
-      target = new URL(location, target);
+      const loc = response.headers.get("location");
+      if (!loc) throw new Error("The website redirected without a destination.");
+      if (i === MAX_REDIRECTS) throw new Error("The website redirected too many times.");
+      target = validateTarget(new URL(loc, target).href);
       continue;
     }
-
-    if (!response.ok) throw new Error(`The remote website returned HTTP ${response.status}.`);
-
-    const contentType = response.headers.get("content-type") || "";
-    if (!/text\/html|application\/xhtml\+xml/i.test(contentType)) {
+    if (!response.ok) throw new Error("The website returned HTTP " + response.status + ".");
+    if (!/text\/html|application\/xhtml\+xml/i.test(response.headers.get("content-type") || "")) {
       throw new Error("The URL did not return an HTML webpage.");
     }
-
-    const declaredLength = Number(response.headers.get("content-length") || 0);
-    if (declaredLength > MAX_HTML_BYTES) throw new Error("The webpage is larger than the 2 MB response limit.");
-
+    const length = Number(response.headers.get("content-length") || 0);
+    if (length > MAX_HTML_BYTES) throw new Error("The webpage exceeds the 2 MB HTML limit.");
     const html = await response.text();
-    if (new TextEncoder().encode(html).byteLength > MAX_HTML_BYTES) {
-      throw new Error("The webpage is larger than the 2 MB response limit.");
-    }
-
+    if (new TextEncoder().encode(html).byteLength > MAX_HTML_BYTES) throw new Error("The webpage exceeds the 2 MB HTML limit.");
     return { html, finalUrl: target.href };
   }
-
   throw new Error("Unable to retrieve the webpage.");
-}
-
-function addBaseUrl(html, baseUrl) {
-  const safeBase = baseUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-  const baseTag = `<base href="${safeBase}">`;
-  const withoutBase = html.replace(/<base\b[^>]*>/i, "");
-  if (/<head\b[^>]*>/i.test(withoutBase)) {
-    return withoutBase.replace(/<head\b[^>]*>/i, (head) => `${head}\n${baseTag}`);
-  }
-  return `${baseTag}\n${withoutBase}`;
 }
 
 export default {
   async fetch(request) {
     const url = new URL(request.url);
-
     if (request.method === "OPTIONS") {
-      return new Response(null, {
-        status: 204,
-        headers: {
-          "access-control-allow-origin": "*",
-          "access-control-allow-methods": "GET, OPTIONS",
-          "access-control-allow-headers": "Content-Type",
-          "access-control-max-age": "86400"
-        }
-      });
+      return new Response(null, { status: 204, headers: {
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, OPTIONS",
+        "access-control-allow-headers": "Content-Type",
+        "access-control-max-age": "86400"
+      }});
     }
-
     if (url.pathname === "/" && request.method === "GET") {
-      return json({
-        name: "Shortcuts Plus Page Fetcher",
-        status: "ok",
-        endpoint: "/get-website?url=https%3A%2F%2Fexample.com"
-      });
+      return json({ name: "Shortcuts Plus Page Packager", status: "ok",
+        endpoint: "/get-website?url=https%3A%2F%2Fexample.com",
+        output: "single HTML document with linked CSS and JavaScript inlined" });
     }
-
-    if (url.pathname !== "/get-website") {
-      return json({ error: "Not found", expectedPath: "/get-website" }, 404);
-    }
-
+    if (url.pathname !== "/get-website") return json({ error: "Not found", expectedPath: "/get-website" }, 404);
     if (request.method !== "GET") return json({ error: "Only GET requests are supported." }, 405);
-
     const requestedUrl = url.searchParams.get("url");
-    if (!requestedUrl) {
-      return json({
-        error: "Missing required url parameter.",
-        example: "https://api.shortcuts.plus/get-website?url=https%3A%2F%2Fexample.com"
-      }, 400);
-    }
-
+    if (!requestedUrl) return json({ error: "Missing required url parameter.",
+      example: "https://api.shortcuts.plus/get-website?url=https%3A%2F%2Fexample.com" }, 400);
     try {
       const target = validateTarget(requestedUrl);
-      const result = await fetchPublicPage(target);
-      const html = addBaseUrl(result.html, result.finalUrl);
-
-      return new Response(html, {
-        status: 200,
-        headers: {
-          "content-type": "text/html; charset=utf-8",
-          "cache-control": "no-store",
-          "access-control-allow-origin": "*",
-          "x-content-type-options": "nosniff",
-          "x-shortcuts-original-url": result.finalUrl
-        }
-      });
+      const fetched = await fetchPage(target);
+      const packaged = await packageHtml(fetched.html, fetched.finalUrl);
+      return new Response(packaged.html, { status: 200, headers: {
+        "content-type": "text/html; charset=utf-8",
+        "content-disposition": 'attachment; filename="shortcuts-page.html"',
+        "cache-control": "no-store",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff",
+        "x-shortcuts-original-url": fetched.finalUrl,
+        "x-shortcuts-inlined-assets": String(packaged.context.assets),
+        "x-shortcuts-skipped-assets": String(packaged.context.skipped.length)
+      }});
     } catch (error) {
-      return json({ error: error instanceof Error ? error.message : "Unable to fetch webpage." }, 400);
+      return json({ error: error instanceof Error ? error.message : "Unable to package webpage." }, 400);
     }
   }
 };
