@@ -1,30 +1,78 @@
-# Shortcuts Plus Page Packager
+# Shortcuts Plus Dynamic Page API
 
-Cloudflare Worker endpoint:
+Cloudflare Worker base URL: `https://api.shortcuts.plus`
 
-`https://api.shortcuts.plus/get-website?url=https%3A%2F%2Fexample.com`
+## Endpoints
 
-The endpoint returns a single HTML document intended to be saved locally as an `.html` file.
+### 1. Load a webpage
 
-## What it packages
+`GET /get-website?url=<URL-encoded-public-http-or-https-url>`
 
-- Original HTML markup.
-- Linked stylesheets (`<link rel="stylesheet">`) fetched and inlined as `<style>`.
-- CSS `@import` rules, with a limited import depth.
-- External JavaScript `<script src="...">` resources inlined into their script elements.
-- Relative CSS `url(...)` references are rewritten to absolute URLs.
-- A `<base>` element is added so remaining relative links and media resolve against the final webpage URL.
+Returns a JSON dictionary:
 
-## Important limitations
+- `file`: packaged HTML string to save as an `.html` file and preview with Quick Look.
+- `dynamic`: native Shortcuts interaction definitions extracted from links and GET forms.
+- `metadata`: title, source URL, asset counts, and generation time.
+- `instructions`: how to submit an action.
 
-This is a server-side source packager, not a browser renderer. It does not execute page JavaScript, run a login session, capture content created only after scripts run, or guarantee that every website can be reconstructed. JavaScript module imports may still load additional resources. Images, video, fonts, and other binary media remain external (they are not embedded as data in the HTML file). Some sites block automated requests or require cookies, headers, or authentication.
+Example shape:
 
-For safety and resource control, the service accepts only public HTTP/HTTPS URLs, does not forward your cookies or credentials, limits the HTML to 2 MB, each fetched CSS/JS resource to 1 MB, aggregate CSS/JS to 4 MB, and fetches at most 24 external CSS/JS resources. Only GET and OPTIONS are supported.
+```json
+{
+  "file": "<!doctype html>...",
+  "dynamic": [
+    { "id": "link_1", "label": "About", "type": "link", "method": "GET", "target": "https://example.com/about" },
+    {
+      "id": "form_1",
+      "label": "Search",
+      "type": "form",
+      "method": "GET",
+      "target": "https://example.com/search",
+      "fields": [
+        { "id": "field_1", "name": "q", "label": "Search", "type": "text", "required": true }
+      ]
+    }
+  ],
+  "metadata": { "title": "Example", "source": "https://example.com/", "version": 1 }
+}
+```
+
+### 2. Submit a native interaction
+
+`POST /action` with JSON:
+
+```json
+{
+  "url": "https://example.com/",
+  "actionId": "form_1",
+  "values": { "q": "hello world" }
+}
+```
+
+For a link, send its `link_N` id and omit `values`. For a form, send the `form_N` id and a `values` dictionary keyed by each field's HTML `name`. The Worker re-fetches the current page, validates that the action still exists, follows the selected link or submits the GET form, and returns the same JSON response shape for the next page.
+
+## Suggested Apple Shortcuts flow
+
+1. Ask for or receive the starting URL.
+2. Use **Get Contents of URL** with `/get-website?url=` plus the URL-encoded starting URL.
+3. Use **Get Dictionary from Input** on the response.
+4. Get the `file` value, save it with an `.html` extension, and use **Quick Look** to preview it.
+5. Get the `dynamic` array. Use **Choose from List** with the item labels.
+6. Branch on the chosen item's `type`:
+   - `link`: submit its `id` to `POST /action`.
+   - `form`: ask for each listed field using native Shortcuts actions, build a `values` dictionary, then submit.
+7. Parse the returned dictionary and repeat from step 4.
+
+Shortcuts does not receive a callback from Quick Look when an HTML element is tapped. Native menus and prompts are the interaction surface; Quick Look is the display surface.
+
+## Packaging behavior and limitations
+
+The packager inlines linked stylesheets, nested CSS imports (limited depth), external classic script files, and rewrites CSS URLs to absolute URLs. It injects a base URL so remaining relative resources can resolve.
+
+It does not execute JavaScript or render the page in Chromium. It cannot reliably discover actions implemented only by JavaScript, buttons with no ordinary link/form behavior, dynamically created controls, or forms using POST. The interaction extractor currently exposes ordinary links and GET forms only. Some sites may require cookies, authentication, anti-bot challenges, or browser execution and therefore may not work.
+
+The Worker accepts only public HTTP/HTTPS destinations, blocks local/private/reserved hosts, validates redirects, and does not forward user cookies or credentials. HTML is limited to 2 MB; each fetched CSS/JS resource to 1 MB; aggregate CSS/JS to 4 MB; and no more than 24 external CSS/JS resources are fetched. Images, fonts, video, and other binary media remain external.
 
 ## Test
 
-Use:
-
 `https://api.shortcuts.plus/get-website?url=https%3A%2F%2Fexample.com`
-
-The response is HTML with a download filename of `shortcuts-page.html`. In Apple Shortcuts, use **Get Contents of URL**, then save the returned content as an HTML file. Quick Look can preview the saved file, subject to iOS's local-file rendering limitations.
