@@ -6,7 +6,7 @@
      index: 0,
      width: "320px",
      height: "auto",
-     dataUrl: "/data/shortcuts.json",
+     dataUrl: "https://shortcuts.plus/data/shortcuts.json",
      showCategory: true,
      showDescription: true,
      showCopyLink: true,
@@ -23,7 +23,7 @@
   "use strict";
 
   var DEFAULTS = {
-    dataUrl: "/data/shortcuts.json",
+    dataUrl: "https://shortcuts.plus/data/shortcuts.json",
     index: null,
     id: null,
     width: "100%",
@@ -196,7 +196,7 @@
 
     if (options.showFullPage) {
       actionsHTML +=
-        '<a class="sp-card-button sp-card-secondary" href="/full?s=' +
+        '<a class="sp-card-button sp-card-secondary" href="https://shortcuts.plus/full.html?s=' +
         index +
         '">Full Page</a>';
     }
