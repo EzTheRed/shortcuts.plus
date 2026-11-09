@@ -353,17 +353,64 @@ function pageTitle(html) {
   return m ? labelText(m[1], "Webpage") : "Webpage";
 }
 
-async function buildPage(url) {
-  const fetched = await fetchPage(validateTarget(url));
+function pageCacheKey(url) {
+  const key = new URL("https://api.shortcuts.plus/__page-cache");
+  key.searchParams.set("url", validateTarget(url).href);
+  return new Request(key.href, { method: "GET" });
+}
+
+async function buildPage(url, executionCtx = null, shouldPreload = true) {
+  const target = validateTarget(url).href;
+  const cache = caches.default;
+  const key = pageCacheKey(target);
+  const cached = await cache.match(key);
+  if (cached) {
+    const data = await cached.json();
+    data.metadata.cacheHit = true;
+    return data;
+  }
+
+  const fetched = await fetchPage(validateTarget(target));
   const packaged = await packageHtml(fetched.html, fetched.finalUrl);
   const dynamic = extractDynamic(fetched.html, fetched.finalUrl);
-  return responseDictionary(packaged.html, dynamic, {
+  const preloadCandidates = [];
+  if (shouldPreload) {
+    const origin = new URL(fetched.finalUrl).origin;
+    for (const item of dynamic) {
+      if (item.type !== "link") continue;
+      try {
+        const candidate = validateTarget(item.target);
+        if (candidate.origin !== origin || candidate.href === fetched.finalUrl) continue;
+        if (preloadCandidates.some(x => x.target === candidate.href)) continue;
+        preloadCandidates.push({ id: item.id, label: item.label, target: candidate.href });
+        if (preloadCandidates.length >= 4) break;
+      } catch {}
+    }
+  }
+
+  const result = responseDictionary(packaged.html, dynamic, {
     title: pageTitle(fetched.html),
     source: fetched.finalUrl,
     finalUrl: fetched.finalUrl,
     inlinedAssets: packaged.context.assets,
-    skippedAssets: packaged.context.skipped
+    skippedAssets: packaged.context.skipped,
+    cacheHit: false,
+    preloaded: preloadCandidates.map(({ id, label }) => ({ id, label }))
   });
+
+  await cache.put(key, new Response(JSON.stringify(result), {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "public, max-age=180"
+    }
+  }));
+
+  if (executionCtx && typeof executionCtx.waitUntil === "function" && preloadCandidates.length) {
+    executionCtx.waitUntil(Promise.allSettled(
+      preloadCandidates.map(item => buildPage(item.target, null, false))
+    ));
+  }
+  return result;
 }
 
 function appendQuery(target, values) {
@@ -379,7 +426,7 @@ function appendQuery(target, values) {
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env, executionCtx) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: {
@@ -407,7 +454,7 @@ export default {
       const requestedUrl = url.searchParams.get("url");
       if (!requestedUrl) return json({ error: "Missing required url parameter." }, 400);
       try {
-        return json(await buildPage(requestedUrl));
+        return json(await buildPage(requestedUrl, executionCtx));
       } catch (error) {
         return json({ error: error instanceof Error ? error.message : "Unable to package webpage." }, 400);
       }
@@ -444,7 +491,7 @@ export default {
           return json({ error: "This action type is not supported." }, 400);
         }
 
-        return json(await buildPage(destination));
+        return json(await buildPage(destination, executionCtx));
       } catch (error) {
         return json({ error: error instanceof Error ? error.message : "Unable to process action." }, 400);
       }
