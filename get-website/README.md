@@ -51,6 +51,20 @@ Example shape:
 
 For a link, send its `link_N` id and omit `values`. For a form, send the `form_N` id and a `values` dictionary keyed by each field's HTML `name`. The Worker re-fetches the current page, validates that the action still exists, follows the selected link or submits the GET form, and returns the same JSON response shape for the next page. Same-origin linked pages may already be cached from background preloading, so selecting one can return much faster.
 
+
+### 3. Generate a text-only vCard menu file
+
+`POST /get-vcf` with a JSON array:
+
+```json
+[
+  { "title": "Menu item 1", "subtitle": "Description of item 1." },
+  { "title": "Menu item 2", "subtitle": "A menu item." }
+]
+```
+
+Returns a downloadable `shortcuts-menu.vcf` file. Each object becomes one vCard contact: `title` is the contact name and `subtitle` is its note. The output contains text fields only; it does not include photos, image URLs, or embedded image data. Send the array as the raw JSON request body with `Content-Type: application/json`.
+
 ## Suggested Apple Shortcuts flow
 
 1. Ask for or receive the starting URL.
