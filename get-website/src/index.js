@@ -462,9 +462,9 @@ function vcardResponse(items) {
     const lines = [
       "BEGIN:VCARD",
       "VERSION:3.0",
-      "N:;" + title + ";;;",
-      "FN:" + title,
-      "NOTE:" + subtitle,
+      "N;CHARSET=UTF-8:;" + title + ";;;",
+      "ORG;CHARSET=UTF-8:" + subtitle,
+      "FN;CHARSET=UTF-8:" + title,
       "UID:urn:uuid:" + crypto.randomUUID(),
       "END:VCARD"
     ];
