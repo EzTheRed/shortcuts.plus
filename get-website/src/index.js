@@ -225,43 +225,231 @@ async function fetchPage(startUrl) {
   throw new Error("Unable to retrieve the webpage.");
 }
 
+
+function attr(attrs, name) {
+  const re = new RegExp("(?:^|\\s)" + name + "\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))", "i");
+  const m = attrs.match(re);
+  return m ? (m[1] ?? m[2] ?? m[3] ?? "") : "";
+}
+
+function labelText(value, fallback) {
+  const text = value.replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"').replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ").trim();
+  return (text || fallback).slice(0, 120);
+}
+
+function safeActionUrl(raw, base) {
+  try {
+    const u = validateTarget(new URL(raw, base).href);
+    return u.href;
+  } catch {
+    return null;
+  }
+}
+
+function extractDynamic(html, pageUrl) {
+  const dynamic = [];
+  const seen = new Set();
+  const add = item => {
+    if (dynamic.length < 60 && !seen.has(item.id)) {
+      seen.add(item.id);
+      dynamic.push(item);
+    }
+  };
+
+  const anchorRe = /<a\b([^>]*)>([\s\S]*?)<\/a\s*>/gi;
+  let n = 0;
+  for (const m of html.matchAll(anchorRe)) {
+    const rawHref = attr(m[1], "href");
+    if (!rawHref || /^(javascript:|mailto:|tel:|#)/i.test(rawHref)) continue;
+    const href = safeActionUrl(rawHref, pageUrl);
+    if (!href) continue;
+    n++;
+    add({
+      id: "link_" + n,
+      label: labelText(m[2], "Open link " + n),
+      type: "link",
+      method: "GET",
+      target: href
+    });
+  }
+
+  const formRe = /<form\b([^>]*)>([\s\S]*?)<\/form\s*>/gi;
+  let formIndex = 0;
+  for (const form of html.matchAll(formRe)) {
+    const attrs = form[1];
+    const method = (attr(attrs, "method") || "GET").toUpperCase();
+    if (method !== "GET") continue;
+    const rawAction = attr(attrs, "action") || pageUrl;
+    const target = safeActionUrl(rawAction, pageUrl);
+    if (!target) continue;
+    formIndex++;
+    const fields = [];
+    const controlRe = /<(input|textarea|select)\b([^>]*?)(?:>([\s\S]*?)<\/\1\s*>|\/?>)/gi;
+    let fieldIndex = 0;
+    for (const control of form[2].matchAll(controlRe)) {
+      const tag = control[1].toLowerCase();
+      const a = control[2];
+      const type = (attr(a, "type") || (tag === "select" ? "select" : tag)).toLowerCase();
+      const name = attr(a, "name");
+      if (!name || ["submit", "button", "reset", "image", "file"].includes(type) || attr(a, "disabled") !== "") continue;
+      fieldIndex++;
+      const options = [];
+      if (tag === "select") {
+        const optionRe = /<option\b([^>]*)>([\s\S]*?)<\/option\s*>/gi;
+        for (const opt of (control[3] || "").matchAll(optionRe)) {
+          const value = attr(opt[1], "value") || labelText(opt[2], "");
+          if (value) options.push({ label: labelText(opt[2], value), value });
+        }
+      }
+      fields.push({
+        id: "field_" + fieldIndex,
+        name,
+        label: attr(a, "aria-label") || attr(a, "placeholder") || attr(a, "title") || name,
+        type: tag === "select" ? "select" : (type === "checkbox" || type === "radio" ? type : "text"),
+        required: /(?:^|\s)required(?:\s|$)/i.test(a),
+        ...(options.length ? { options } : {}),
+        ...(type === "checkbox" ? { value: attr(a, "value") || "on" } : {})
+      });
+    }
+    if (fields.length) {
+      add({
+        id: "form_" + formIndex,
+        label: attr(attrs, "aria-label") || attr(attrs, "name") || "Submit form " + formIndex,
+        type: "form",
+        method: "GET",
+        target,
+        fields
+      });
+    }
+  }
+
+  return dynamic;
+}
+
+function responseDictionary(file, dynamic, metadata = {}) {
+  return {
+    file,
+    dynamic,
+    metadata: {
+      title: metadata.title || "Webpage",
+      source: metadata.source || "",
+      version: 1,
+      generatedAt: new Date().toISOString(),
+      ...metadata
+    },
+    instructions: {
+      interaction: "Use the dynamic array to build native Shortcuts menus and prompts. Send the selected item id and any form values to POST /action.",
+      actionEndpoint: "https://api.shortcuts.plus/action"
+    }
+  };
+}
+
+function pageTitle(html) {
+  const m = html.match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i);
+  return m ? labelText(m[1], "Webpage") : "Webpage";
+}
+
+async function buildPage(url) {
+  const fetched = await fetchPage(validateTarget(url));
+  const packaged = await packageHtml(fetched.html, fetched.finalUrl);
+  const dynamic = extractDynamic(fetched.html, fetched.finalUrl);
+  return responseDictionary(packaged.html, dynamic, {
+    title: pageTitle(fetched.html),
+    source: fetched.finalUrl,
+    finalUrl: fetched.finalUrl,
+    inlinedAssets: packaged.context.assets,
+    skippedAssets: packaged.context.skipped
+  });
+}
+
+function appendQuery(target, values) {
+  const u = validateTarget(target);
+  for (const [key, value] of Object.entries(values || {})) {
+    if (Array.isArray(value)) {
+      for (const v of value) u.searchParams.append(key, String(v));
+    } else if (value !== undefined && value !== null && value !== "") {
+      u.searchParams.set(key, String(value));
+    }
+  }
+  return u.href;
+}
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: {
         "access-control-allow-origin": "*",
-        "access-control-allow-methods": "GET, OPTIONS",
+        "access-control-allow-methods": "GET, POST, OPTIONS",
         "access-control-allow-headers": "Content-Type",
         "access-control-max-age": "86400"
       }});
     }
+
     if (url.pathname === "/" && request.method === "GET") {
-      return json({ name: "Shortcuts Plus Page Packager", status: "ok",
-        endpoint: "/get-website?url=https%3A%2F%2Fexample.com",
-        output: "single HTML document with linked CSS and JavaScript inlined" });
+      return json({
+        name: "Shortcuts Plus Dynamic Page API",
+        status: "ok",
+        endpoints: {
+          initial: "/get-website?url=https%3A%2F%2Fexample.com",
+          action: "POST /action with { url, actionId, values? }"
+        },
+        response: { file: "HTML string", dynamic: "native Shortcuts interaction definitions", metadata: "page information" }
+      });
     }
-    if (url.pathname !== "/get-website") return json({ error: "Not found", expectedPath: "/get-website" }, 404);
-    if (request.method !== "GET") return json({ error: "Only GET requests are supported." }, 405);
-    const requestedUrl = url.searchParams.get("url");
-    if (!requestedUrl) return json({ error: "Missing required url parameter.",
-      example: "https://api.shortcuts.plus/get-website?url=https%3A%2F%2Fexample.com" }, 400);
-    try {
-      const target = validateTarget(requestedUrl);
-      const fetched = await fetchPage(target);
-      const packaged = await packageHtml(fetched.html, fetched.finalUrl);
-      return new Response(packaged.html, { status: 200, headers: {
-        "content-type": "text/html; charset=utf-8",
-        "content-disposition": 'attachment; filename="shortcuts-page.html"',
-        "cache-control": "no-store",
-        "access-control-allow-origin": "*",
-        "x-content-type-options": "nosniff",
-        "x-shortcuts-original-url": fetched.finalUrl,
-        "x-shortcuts-inlined-assets": String(packaged.context.assets),
-        "x-shortcuts-skipped-assets": String(packaged.context.skipped.length)
-      }});
-    } catch (error) {
-      return json({ error: error instanceof Error ? error.message : "Unable to package webpage." }, 400);
+
+    if (url.pathname === "/get-website") {
+      if (request.method !== "GET") return json({ error: "Only GET requests are supported for this endpoint." }, 405);
+      const requestedUrl = url.searchParams.get("url");
+      if (!requestedUrl) return json({ error: "Missing required url parameter." }, 400);
+      try {
+        return json(await buildPage(requestedUrl));
+      } catch (error) {
+        return json({ error: error instanceof Error ? error.message : "Unable to package webpage." }, 400);
+      }
     }
+
+    if (url.pathname === "/action") {
+      if (request.method !== "POST") return json({ error: "Use POST for actions." }, 405);
+      try {
+        const body = await request.json();
+        if (!body || typeof body !== "object") return json({ error: "A JSON request body is required." }, 400);
+        const sourceUrl = validateTarget(body.url).href;
+        const actionId = String(body.actionId || "");
+        if (!/^link_\d+$/.test(actionId) && !/^form_\d+$/.test(actionId)) {
+          return json({ error: "Unknown or unsupported actionId." }, 400);
+        }
+
+        const currentPage = await fetchPage(validateTarget(sourceUrl));
+        const dynamic = extractDynamic(currentPage.html, currentPage.finalUrl);
+        const selected = dynamic.find(item => item.id === actionId);
+        if (!selected) return json({ error: "That action is not available on the current page." }, 404);
+
+        let destination;
+        if (selected.type === "link") {
+          destination = selected.target;
+        } else if (selected.type === "form") {
+          const supplied = body.values && typeof body.values === "object" ? body.values : {};
+          const allowed = new Set(selected.fields.map(field => field.name));
+          const values = {};
+          for (const [key, value] of Object.entries(supplied)) {
+            if (allowed.has(key)) values[key] = value;
+          }
+          destination = appendQuery(selected.target, values);
+        } else {
+          return json({ error: "This action type is not supported." }, 400);
+        }
+
+        return json(await buildPage(destination));
+      } catch (error) {
+        return json({ error: error instanceof Error ? error.message : "Unable to process action." }, 400);
+      }
+    }
+
+    return json({ error: "Not found", expectedPaths: ["/get-website", "/action"] }, 404);
   }
 };
