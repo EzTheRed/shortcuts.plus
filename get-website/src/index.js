@@ -12,7 +12,7 @@ function json(data, status = 200) {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET, OPTIONS",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
       "access-control-allow-headers": "Content-Type",
       "x-content-type-options": "nosniff"
     }
