@@ -49,7 +49,7 @@ Example shape:
 }
 ```
 
-For a link, send its `link_N` id and omit `values`. For a form, send the `form_N` id and a `values` dictionary keyed by each field's HTML `name`. The Worker re-fetches the current page, validates that the action still exists, follows the selected link or submits the GET form, and returns the same JSON response shape for the next page.
+For a link, send its `link_N` id and omit `values`. For a form, send the `form_N` id and a `values` dictionary keyed by each field's HTML `name`. The Worker re-fetches the current page, validates that the action still exists, follows the selected link or submits the GET form, and returns the same JSON response shape for the next page. Same-origin linked pages may already be cached from background preloading, so selecting one can return much faster.
 
 ## Suggested Apple Shortcuts flow
 
@@ -69,7 +69,7 @@ Shortcuts does not receive a callback from Quick Look when an HTML element is ta
 
 The packager inlines linked stylesheets, nested CSS imports (limited depth), external classic script files, and rewrites CSS URLs to absolute URLs. It injects a base URL so remaining relative resources can resolve.
 
-It does not execute JavaScript or render the page in Chromium. It cannot reliably discover actions implemented only by JavaScript, buttons with no ordinary link/form behavior, dynamically created controls, or forms using POST. The interaction extractor currently exposes ordinary links and GET forms only. Some sites may require cookies, authentication, anti-bot challenges, or browser execution and therefore may not work.
+It does not execute JavaScript or render the page in Chromium. Preloading is deliberately limited to four same-origin links per page; it does not recursively crawl the whole site. Cache entries are opportunistic and may not be shared between Cloudflare data centers. It cannot reliably discover actions implemented only by JavaScript, buttons with no ordinary link/form behavior, dynamically created controls, or forms using POST. The interaction extractor currently exposes ordinary links and GET forms only. Some sites may require cookies, authentication, anti-bot challenges, or browser execution and therefore may not work.
 
 The Worker accepts only public HTTP/HTTPS destinations, blocks local/private/reserved hosts, validates redirects, and does not forward user cookies or credentials. HTML is limited to 2 MB; each fetched CSS/JS resource to 1 MB; aggregate CSS/JS to 4 MB; and no more than 24 external CSS/JS resources are fetched. Images, fonts, video, and other binary media remain external.
 
