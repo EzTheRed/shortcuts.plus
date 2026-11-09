@@ -17,7 +17,7 @@
 
    Or auto-mount an element using data attributes:
    <div data-shortcut-index="0" data-width="320px" data-height="auto"></div>
-   <script src="/assets/js/shortcut-card.js" defer></script>
+   <script src="https://shortcuts.plus/assets/js/shortcut-card.js" defer></script>
 */
 (function () {
   "use strict";
