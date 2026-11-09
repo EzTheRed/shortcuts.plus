@@ -413,6 +413,77 @@ async function buildPage(url, executionCtx = null, shouldPreload = true) {
   return result;
 }
 
+
+function escapeVCard(value) {
+  return String(value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\r\n|\r|\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+}
+
+function foldVCardLine(line) {
+  const encoder = new TextEncoder();
+  const chunks = [];
+  let current = "";
+  let bytes = 0;
+  for (const char of line) {
+    const size = encoder.encode(char).length;
+    if (bytes + size > 75) {
+      chunks.push(current);
+      current = " " + char;
+      bytes = 1 + size;
+    } else {
+      current += char;
+      bytes += size;
+    }
+  }
+  chunks.push(current);
+  return chunks.join("\r\n");
+}
+
+function vcardResponse(items) {
+  if (!Array.isArray(items)) {
+    return json({ error: "Send a JSON array of objects with title and subtitle fields." }, 400);
+  }
+  if (items.length < 1 || items.length > 100) {
+    return json({ error: "Provide between 1 and 100 menu items." }, 400);
+  }
+  const cards = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!item || typeof item !== "object" || Array.isArray(item) ||
+        typeof item.title !== "string" || typeof item.subtitle !== "string" ||
+        !item.title.trim()) {
+      return json({ error: "Each item must contain a non-empty string title and a string subtitle.", item: i }, 400);
+    }
+    const title = escapeVCard(item.title.trim());
+    const subtitle = escapeVCard(item.subtitle);
+    const lines = [
+      "BEGIN:VCARD",
+      "VERSION:3.0",
+      "N:;" + title + ";;;",
+      "FN:" + title,
+      "NOTE:" + subtitle,
+      "UID:urn:uuid:" + crypto.randomUUID(),
+      "END:VCARD"
+    ];
+    cards.push(lines.map(foldVCardLine).join("\r\n"));
+  }
+  return new Response(cards.join("\r\n") + "\r\n", {
+    status: 200,
+    headers: {
+      "content-type": "text/vcard; charset=utf-8",
+      "content-disposition": 'attachment; filename="shortcuts-menu.vcf"',
+      "cache-control": "no-store",
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "x-content-type-options": "nosniff"
+    }
+  });
+}
+
 function appendQuery(target, values) {
   const u = validateTarget(target);
   for (const [key, value] of Object.entries(values || {})) {
@@ -447,6 +518,17 @@ export default {
         },
         response: { file: "HTML string", dynamic: "native Shortcuts interaction definitions", metadata: "page information" }
       });
+    }
+
+
+    if (url.pathname === "/get-vcf") {
+      if (request.method !== "POST") return json({ error: "Use POST with a JSON array of { title, subtitle } objects." }, 405);
+      try {
+        const items = await request.json();
+        return vcardResponse(items);
+      } catch (error) {
+        return json({ error: "The request body must be valid JSON." }, 400);
+      }
     }
 
     if (url.pathname === "/get-website") {
