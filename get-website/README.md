@@ -1,32 +1,30 @@
-# Shortcuts Plus — Get Website Worker
+# Shortcuts Plus Page Packager
 
-This Cloudflare Worker retrieves the HTML source of a public webpage for use in Apple Shortcuts.
+Cloudflare Worker endpoint:
 
-## Endpoint
+`https://api.shortcuts.plus/get-website?url=https%3A%2F%2Fexample.com`
 
-GET https://api.shortcuts.plus/get-website?url=https%3A%2F%2Fexample.com
+The endpoint returns a single HTML document intended to be saved locally as an `.html` file.
 
-The response is HTML. A base element is inserted into the document so relative resource URLs resolve against the final webpage URL.
+## What it packages
 
-## Health check
+- Original HTML markup.
+- Linked stylesheets (`<link rel="stylesheet">`) fetched and inlined as `<style>`.
+- CSS `@import` rules, with a limited import depth.
+- External JavaScript `<script src="...">` resources inlined into their script elements.
+- Relative CSS `url(...)` references are rewritten to absolute URLs.
+- A `<base>` element is added so remaining relative links and media resolve against the final webpage URL.
 
-Open https://api.shortcuts.plus/. A JSON response with "status": "ok" indicates that the Worker is running.
+## Important limitations
 
-## Deploy
+This is a server-side source packager, not a browser renderer. It does not execute page JavaScript, run a login session, capture content created only after scripts run, or guarantee that every website can be reconstructed. JavaScript module imports may still load additional resources. Images, video, fonts, and other binary media remain external (they are not embedded as data in the HTML file). Some sites block automated requests or require cookies, headers, or authentication.
 
-- Repository: EzTheRed/shortcuts.plus
-- Branch: main
-- Project path: /get-website
-- Build command: leave blank
-- Worker name: shortcuts-get-website
+For safety and resource control, the service accepts only public HTTP/HTTPS URLs, does not forward your cookies or credentials, limits the HTML to 2 MB, each fetched CSS/JS resource to 1 MB, aggregate CSS/JS to 4 MB, and fetches at most 24 external CSS/JS resources. Only GET and OPTIONS are supported.
 
-The wrangler.jsonc file contains the Worker configuration.
+## Test
 
-## Limits and security
+Use:
 
-- Only GET and CORS preflight requests are supported.
-- Only HTTP and HTTPS targets are accepted.
-- Localhost, common private/reserved IP ranges, and local-only hostnames are rejected.
-- Redirect destinations are validated, with a maximum of five redirects.
-- HTML responses are limited to 2 MB.
-- The Worker returns source HTML; it does not execute page JavaScript or render a browser view.
+`https://api.shortcuts.plus/get-website?url=https%3A%2F%2Fexample.com`
+
+The response is HTML with a download filename of `shortcuts-page.html`. In Apple Shortcuts, use **Get Contents of URL**, then save the returned content as an HTML file. Quick Look can preview the saved file, subject to iOS's local-file rendering limitations.
