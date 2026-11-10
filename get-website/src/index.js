@@ -178,7 +178,7 @@ async function inlineCssImports(css, stylesheetUrl, context, depth = 0) {
 }
 
 function safeInlineText(value, closingTag) {
-  return value.replace(new RegExp("</" + closingTag, "gi"), "<\\/" + closingTag);
+  return value.replace(new RegExp("</" + closingTag, "gi"), "<\/" + closingTag);
 }
 
 async function packageHtml(sourceHtml, pageUrl) {
@@ -484,11 +484,11 @@ async function createPost(request, env) {
   }
 
   let contentType = "text";
-  if (/^https?:\\/\\//i.test(content)) {
+  if (/^https?:\/\//i.test(content)) {
     let link;
     try { link = new URL(content); } catch { return json({ error: "The supplied link is invalid." }, 400); }
     if (link.protocol !== "https:" || !["icloud.com", "www.icloud.com"].includes(link.hostname.toLowerCase()) ||
-        !/^\\/shortcuts\\/[A-Za-z0-9-]+\\/?$/.test(link.pathname)) {
+        !/^\/shortcuts\/[A-Za-z0-9-]+\/?$/.test(link.pathname)) {
       return json({ error: "Only iCloud Shortcut sharing links (https://www.icloud.com/shortcuts/...) are accepted as links." }, 400);
     }
     contentType = "icloud-shortcut";
@@ -546,7 +546,7 @@ async function getAllPosts(request, env) {
 }
 \nfunction escapeVCard(value) {
   return String(value ?? "")
-    .replace(/\\/g, "\\\\")
+    .replace(/\/g, "\\\\")
     .replace(/\r\n|\r|\n/g, "\\n")
     .replace(/,/g, "\\,")
     .replace(/;/g, "\\;");
@@ -659,7 +659,7 @@ export default {
         try { return await getAllPosts(request, env); }
         catch { return json({ error: "Unable to retrieve posts right now." }, 503); }
       }
-      const postMatch = url.pathname.match(/^\\/(\\d+)$/);
+      const postMatch = url.pathname.match(/^\/(\\d+)$/);
       if (postMatch && request.method === "GET") {
         try { return await getPost(request, env, Number(postMatch[1])); }
         catch { return json({ error: "Unable to retrieve this post right now." }, 503); }
