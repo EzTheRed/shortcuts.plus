@@ -43,6 +43,16 @@ async function sha256Hex(value) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
+const TEST_PHRASE_HASHES = new Set([
+  "532eaabd9574880dbf76b9b8cc00832c20a6ec113d682299550d7a6e0f345e25",
+  "c8e5998f6a3955c21d858936fe05c69621724d7f825c6e17793002a0fa798bf9"
+]);
+
+async function validTestCredentials(user, phrase) {
+  if (user !== "EzTheRed" || typeof phrase !== "string" || phrase.length > 128) return false;
+  return TEST_PHRASE_HASHES.has(await sha256Hex(phrase));
+}
+
 async function ownerIdentity(executionCtx) {
   if (!executionCtx?.access || typeof executionCtx.access.getIdentity !== "function") return null;
   try {
@@ -54,7 +64,7 @@ async function ownerIdentity(executionCtx) {
   }
 }
 
-async function issueBasicToken(env, identity, name, scope) {
+async function issueBasicToken(env, identity, name, scope, tokenType = "SHORTCUT") {
   if (!env.AUTH_DB) throw new Error("Authentication storage is not configured.");
   const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
   const token = base64Url(tokenBytes);
@@ -63,8 +73,8 @@ async function issueBasicToken(env, identity, name, scope) {
   const expiresAt = now + AUTH_TOKEN_TTL_SECONDS;
   const id = crypto.randomUUID();
   await env.AUTH_DB.prepare(
-    "INSERT INTO auth_tokens (id, token_hash, name, identity_email, scope, issued_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  ).bind(id, tokenHash, name, identity.email, scope, now, expiresAt).run();
+    "INSERT INTO auth_tokens (id, token_hash, name, identity_email, scope, issued_at, expires_at, token_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(id, tokenHash, name, identity.email, scope, now, expiresAt, tokenType).run();
   const authorization = "Basic " + base64Utf8(name + ":" + token);
   return {
     name,
@@ -78,7 +88,7 @@ async function issueBasicToken(env, identity, name, scope) {
   };
 }
 
-async function consumeBasicToken(request, env, identity, scope) {
+async function consumeBasicToken(request, env, identity, scope, tokenType = "SHORTCUT") {
   if (!env.AUTH_DB) return false;
   const header = request.headers.get("authorization") || "";
   const match = header.match(/^Basic\s+([A-Za-z0-9+/]+=*)$/i);
@@ -100,8 +110,8 @@ async function consumeBasicToken(request, env, identity, scope) {
   const now = Math.floor(Date.now() / 1000);
   try {
     const consumed = await env.AUTH_DB.prepare(
-      "UPDATE auth_tokens SET used_at = ? WHERE token_hash = ? AND name = ? AND identity_email = ? AND scope = ? AND expires_at > ? AND used_at IS NULL AND revoked = 0 RETURNING id"
-    ).bind(now, tokenHash, name, identity.email, scope, now).first();
+      "UPDATE auth_tokens SET used_at = ? WHERE token_hash = ? AND name = ? AND identity_email = ? AND scope = ? AND token_type = ? AND expires_at > ? AND used_at IS NULL AND revoked = 0 RETURNING id"
+    ).bind(now, tokenHash, name, identity.email, scope, tokenType, now).first();
     return Boolean(consumed);
   } catch {
     return false;
@@ -590,6 +600,47 @@ export default {
     const identity = await ownerIdentity(executionCtx);
     if (!identity) return json({ error: "Cloudflare Access authentication required." }, 401);
 
+    if (url.pathname === "/auth/test") {
+      if (request.method !== "POST") return json({ error: "Use POST with a JSON body containing User and Phrase." }, 405);
+      const contentType = request.headers.get("content-type") || "";
+      if (!/application\/json/i.test(contentType)) {
+        return json({ error: "Content-Type must be application/json." }, 415);
+      }
+      let input;
+      try {
+        const body = await request.text();
+        if (body.length > 2048) return json({ error: "The test authentication request body is too large." }, 413);
+        input = JSON.parse(body);
+      } catch {
+        return json({ error: "Send valid JSON containing User and Phrase." }, 400);
+      }
+      if (!input || typeof input !== "object" || Array.isArray(input)) {
+        return json({ error: "The request body must be a JSON object." }, 400);
+      }
+      if (!await validTestCredentials(input.User, input.Phrase)) {
+        return json({ error: "Invalid test username or phrase." }, 401);
+      }
+      try {
+        const issued = await issueBasicToken(env, identity, input.User, "/auth/test/verify", "TEST");
+        return json({
+          ...issued,
+          type: "TEST",
+          verificationEndpoint: "https://api.shortcuts.plus/auth/test/verify",
+          api: null,
+          note: "This test token only verifies test authentication; it cannot access production APIs."
+        });
+      } catch (error) {
+        return json({ error: error instanceof Error ? error.message : "Unable to issue test authentication token." }, 503);
+      }
+    }
+
+    if (url.pathname === "/auth/test/verify") {
+      if (request.method !== "POST") return json({ error: "Use POST with the test token in the Authorization header." }, 405);
+      const valid = await consumeBasicToken(request, env, identity, "/auth/test/verify", "TEST");
+      if (!valid) return json({ error: "A valid, unused, unexpired TEST token is required." }, 401);
+      return json({ authenticated: true, type: "TEST", user: "EzTheRed", api: null });
+    }
+
     if (url.pathname === "/auth") {
       if (request.method !== "POST") return json({ error: "Use POST with a JSON body containing name and api." }, 405);
       const contentType = request.headers.get("content-type") || "";
@@ -627,7 +678,7 @@ export default {
       const requestedLimit = Number(url.searchParams.get("limit") || 30);
       const limit = Number.isInteger(requestedLimit) ? Math.min(100, Math.max(1, requestedLimit)) : 30;
       const result = await env.AUTH_DB.prepare(
-        "SELECT id, name, identity_email, scope, issued_at, expires_at, used_at, substr(token_hash, 1, 16) AS fingerprint FROM auth_tokens WHERE identity_email = ? ORDER BY issued_at DESC LIMIT ?"
+        "SELECT id, name, identity_email, scope, token_type, issued_at, expires_at, used_at, substr(token_hash, 1, 16) AS fingerprint FROM auth_tokens WHERE identity_email = ? ORDER BY issued_at DESC LIMIT ?"
       ).bind(identity.email, limit).all();
       return json({
         count: result.results.length,
@@ -635,7 +686,8 @@ export default {
           id: row.id,
           name: row.name,
           identity: row.identity_email,
-          api: row.scope,
+          api: row.scope === "/auth/test/verify" ? null : row.scope,
+          type: row.token_type || "SHORTCUT",
           tokenFingerprint: row.fingerprint,
           issuedAt: row.issued_at,
           expiresAt: row.expires_at,
@@ -656,6 +708,7 @@ export default {
         status: "ok",
         endpoints: {
           auth: "POST /auth with JSON {name, api} (Cloudflare Access required)",
+          testAuth: "POST /auth/test with JSON {User, Phrase}; verify at POST /auth/test/verify (TEST-only)",
           authLogs: "GET /auth/logs?limit=30 (owner-only audit log)",
           website: "GET /get-website?url=<URL-encoded-public-website> (Basic token required)",
           vcfMenu: "GET /vcf-menu?data=<URL-encoded-JSON-object> (Basic token required)"
@@ -688,6 +741,6 @@ export default {
       }
     }
 
-    return json({ error: "Not found", expectedPaths: ["/auth", "/auth/logs", "/get-website", "/vcf-menu"] }, 404);
+    return json({ error: "Not found", expectedPaths: ["/auth", "/auth/test", "/auth/test/verify", "/auth/logs", "/get-website", "/vcf-menu"] }, 404);
   }
 };
