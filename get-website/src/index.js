@@ -107,7 +107,8 @@ async function consumeBasicToken(request, env, identity, scope) {
     return false;
   }
 }
-\nfunction isPrivateOrLocalHost(hostname) {
+
+function isPrivateOrLocalHost(hostname) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") ||
       host.endsWith(".internal") || host.endsWith(".test") || host.endsWith(".invalid") ||
