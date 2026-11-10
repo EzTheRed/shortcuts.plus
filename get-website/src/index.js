@@ -593,7 +593,7 @@ export default {
     if (url.pathname === "/auth") {
       if (request.method !== "POST") return json({ error: "Use POST with a JSON body containing name and api." }, 405);
       const contentType = request.headers.get("content-type") || "";
-      if (!/application\\/json/i.test(contentType)) {
+      if (!/application\/json/i.test(contentType)) {
         return json({ error: "Content-Type must be application/json." }, 415);
       }
       let input;
