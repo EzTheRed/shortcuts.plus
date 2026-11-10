@@ -63,3 +63,30 @@ html:not(.theme-ready) *,html:not(.theme-ready) *::before,html:not(.theme-ready)
 
 /* Shortcut detail page */
 .detail-wrap{padding-top:28px;padding-bottom:64px}.detail-back{display:inline-block;margin-bottom:22px;color:var(--blue);font-size:13px;text-decoration:none}.detail-back:hover{text-decoration:underline}.detail-card{max-width:760px;min-height:0;margin:0 auto;padding:clamp(22px,5vw,42px);border-color:var(--border-light)}.detail-card h1{margin:18px 0 12px;font-size:clamp(34px,6vw,54px);line-height:1.03;letter-spacing:-.065em;overflow-wrap:anywhere}.detail-card .eyebrow{margin-top:24px;margin-bottom:0}.detail-card .badge{margin:0 0 12px}.detail-card>p:not(.eyebrow):not(.badge){margin-top:12px;font-size:15px;line-height:1.7;overflow-wrap:anywhere}.detail-card .hero-actions{justify-content:flex-start;gap:10px;margin-top:26px}.detail-card .button:not(.button-blue){border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer}.detail-source,.detail-date{font-size:12px!important;color:var(--faint)!important}.detail-source a{color:var(--blue);overflow-wrap:anywhere}.detail-date{margin-top:18px!important}
+
+/* Simplified home view */
+.simple-main{min-height:calc(100vh - var(--nav-height));padding-top:62px;padding-bottom:78px}
+.simple-heading{padding-bottom:26px}
+.simple-heading .eyebrow{margin-bottom:8px}
+.simple-heading h1{margin:0;font-size:clamp(38px,7vw,58px);line-height:1;letter-spacing:-.065em}
+.simple-heading h1 span{color:var(--blue)}
+.simple-heading>p:last-child{margin:12px 0 0;color:var(--muted);font-size:15px}
+.simple-search{margin:0;width:min(620px,100%)}
+.simple-library{margin-top:42px}
+.simple-list-heading{display:flex;align-items:end;justify-content:space-between;gap:16px;padding-bottom:15px;border-bottom:1px solid var(--border)}
+.simple-list-heading h2{margin:0;font-size:23px;letter-spacing:-.04em}
+.simple-list-heading p{margin:4px 0 0;color:var(--faint);font-size:12px}
+.simple-count{color:var(--faint);font-size:12px;white-space:nowrap}
+.simple-filter{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--border-light);color:var(--faint);font-size:12px}
+.simple-filter .section-picker-button{min-height:32px;padding:5px 11px;border:1px solid var(--border);border-radius:999px;background:var(--surface-strong);color:var(--text)}
+.simple-filter .section-picker-menu{right:0}
+.simple-card-list{display:grid;gap:0}
+.simple-card{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 2px;border-bottom:1px solid var(--border-light)}
+.simple-card-copy{min-width:0}
+.simple-card h3{margin:0;font-size:16px;font-weight:650;letter-spacing:-.025em}
+.simple-card p{margin:4px 0 0;color:var(--muted);font-size:13px;line-height:1.5}
+.simple-card-actions{display:flex;align-items:center;gap:13px;flex:none}
+.simple-card-actions a,.simple-card-actions button{border:0;background:none;padding:4px 0;color:var(--blue);font-size:12px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.simple-card-actions .simple-get{font-weight:650}
+.simple-card-actions a:hover,.simple-card-actions button:hover{text-decoration:underline}
+@media(max-width:640px){.simple-main{padding-top:42px;padding-bottom:55px}.simple-library{margin-top:32px}.simple-card{align-items:flex-start;flex-direction:column;gap:11px;padding:16px 0}.simple-card-actions{gap:18px}.simple-list-heading h2{font-size:21px}}
