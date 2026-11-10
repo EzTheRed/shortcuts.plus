@@ -524,7 +524,7 @@ export default {
     }
 
 
-    if (url.pathname === "/vcf-menu" || url.pathname === "/get-vcf") {
+    if (url.pathname === "/vcf-menu") {
       if (request.method !== "POST") return json({ error: "Use POST with a JSON object mapping contact titles to subtitles." }, 405);
       try {
         const items = await request.json();
