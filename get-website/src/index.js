@@ -405,7 +405,7 @@ function pageTitle(html) {
 }
 
 function pageCacheKey(url) {
-  const key = new URL("https://api.shortcuts.plus/__page-cache-v4");
+  const key = new URL("https://api.shortcuts.plus/__page-cache-v5");
   key.searchParams.set("url", validateTarget(url).href);
   return new Request(key.href, { method: "GET" });
 }
@@ -481,11 +481,11 @@ async function renderShortcutsPlusMenu() {
     'footer{border-top:1px solid var(--line);margin-top:34px;padding-top:17px;color:var(--muted);font-size:11px}',
     '</style></head><body><main class="page">',
     '<nav class="nav"><a class="brand" href="https://shortcuts.plus/">Shortcuts<span class="brand-mark">+</span></a><span class="nav-label">Library</span></nav>',
-    '<header class="hero"><div class="eyebrow">An independent shortcut library</div><h1>Static View</h1>',
-    '<p class="intro">A little shortcut. A lot more done. Browse the collection of useful workflows, creative utilities, and everyday automations.</p></header>',
-    '<section aria-label="All shortcuts"><div class="collection-head"><h2 class="collection-title">The collection.</h2><span class="count">' + entries.length + ' shortcuts</span></div>',
+    '<header class="hero"><div class="eyebrow">Made by me</div><h1>Static View</h1>',
+    '<p class="intro">A home for my own shortcuts and experiments. Explore the projects I have made for Shortcuts+.</p></header>',
+    '<section aria-label="All shortcuts"><div class="collection-head"><h2 class="collection-title">My projects.</h2><span class="count">' + entries.length + ' shortcuts</span></div>',
     '<ul class="menu">' + rows + '</ul></section>',
-    '<footer>Shortcuts+ is an independent library. Review a shortcut’s actions and permissions before using it.</footer>',
+    '<footer>Created and maintained as part of Shortcuts+. Review a shortcut’s actions and permissions before using it.</footer>',
     '</main></body></html>'
   ].join("\n");
 
