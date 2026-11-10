@@ -21,138 +21,6 @@ function json(data, status = 200) {
 }
 
 
-const AUTH_TOKEN_TTL_SECONDS = 10;
-const AUTH_OWNER_EMAIL = "ezieriah@cutey.com";
-
-function bytesToBase64(bytes) {
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
-
-function base64Url(bytes) {
-  return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-function base64Utf8(value) {
-  return bytesToBase64(new TextEncoder().encode(value));
-}
-
-async function sha256Hex(value) {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
-}
-
-async function validTestCredentials(env, user, phrase) {
-  if (user !== "EzTheRed" || typeof phrase !== "string" || phrase.length > 128) return false;
-  let configured;
-  try {
-    configured = JSON.parse(env.TEST_PHRASE_HASHES || "{}");
-  } catch {
-    return false;
-  }
-  const allowedHashes = configured[user];
-  if (!Array.isArray(allowedHashes)) return false;
-  return allowedHashes.includes(await sha256Hex(phrase));
-}
-
-const ACCESS_ISSUER = "https://shortcutsplus.cloudflareaccess.com";
-const ACCESS_AUDIENCE = "d79fd06033d8b0c4cb249326ce67429648db2aa07492ac22aca567ab0ec8932d";
-let accessJwksCache = null;
-let accessJwksExpiresAt = 0;
-
-function decodeBase64Url(value) {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
-  const binary = atob(padded);
-  return Uint8Array.from(binary, char => char.charCodeAt(0));
-}
-
-async function getAccessSigningKeys() {
-  if (accessJwksCache && Date.now() < accessJwksExpiresAt) return accessJwksCache;
-  const response = await fetch(ACCESS_ISSUER + "/cdn-cgi/access/certs", {
-    headers: { accept: "application/json" },
-    cf: { cacheTtl: 300, cacheEverything: true }
-  });
-  if (!response.ok) throw new Error("Unable to retrieve Cloudflare Access signing keys.");
-  const body = await response.json();
-  if (!Array.isArray(body.keys)) throw new Error("Cloudflare Access signing keys are unavailable.");
-  const imported = new Map();
-  for (const jwk of body.keys) {
-    if (jwk?.kid && jwk.kty === "RSA" && jwk.alg === "RS256" && jwk.use === "sig") {
-      imported.set(jwk.kid, await crypto.subtle.importKey(
-        "jwk",
-        jwk,
-        { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-        false,
-        ["verify"]
-      ));
-    }
-  }
-  if (!imported.size) throw new Error("No usable Cloudflare Access signing keys were returned.");
-  accessJwksCache = imported;
-  accessJwksExpiresAt = Date.now() + 5 * 60 * 1000;
-  return imported;
-}
-
-async function ownerIdentity(request) {
-  const token = request.headers.get("cf-access-jwt-assertion") || "";
-  if (!token || token.length > 16384) return null;
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  try {
-    const header = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[0])));
-    const claims = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[1])));
-    if (header.alg !== "RS256" || typeof header.kid !== "string") return null;
-    if (claims.iss !== ACCESS_ISSUER) return null;
-    const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
-    if (!audiences.includes(ACCESS_AUDIENCE)) return null;
-    const now = Math.floor(Date.now() / 1000);
-    if (typeof claims.exp !== "number" || claims.exp <= now) return null;
-    if (typeof claims.nbf === "number" && claims.nbf > now) return null;
-    if (typeof claims.iat === "number" && claims.iat > now + 60) return null;
-    if (typeof claims.email !== "string" || claims.email.toLowerCase() !== AUTH_OWNER_EMAIL) return null;
-    const key = (await getAccessSigningKeys()).get(header.kid);
-    if (!key) return null;
-    const signingInput = new TextEncoder().encode(parts[0] + "." + parts[1]);
-    const signature = decodeBase64Url(parts[2]);
-    const valid = await crypto.subtle.verify(
-      { name: "RSASSA-PKCS1-v1_5" },
-      key,
-      signature,
-      signingInput
-    );
-    if (!valid) return null;
-    return { email: claims.email.toLowerCase(), name: claims.name || "" };
-  } catch {
-    return null;
-  }
-}
-
-async function issueBasicToken(env, identity, name, scope, tokenType = "SHORTCUT") {
-  if (!env.AUTH_DB) throw new Error("Authentication storage is not configured.");
-  const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
-  const token = base64Url(tokenBytes);
-  const tokenHash = await sha256Hex(token);
-  const now = Math.floor(Date.now() / 1000);
-  const expiresAt = now + AUTH_TOKEN_TTL_SECONDS;
-  const id = crypto.randomUUID();
-  await env.AUTH_DB.prepare(
-    "INSERT INTO auth_tokens (id, token_hash, name, identity_email, scope, issued_at, expires_at, token_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-  ).bind(id, tokenHash, name, identity.email, scope, now, expiresAt, tokenType).run();
-  const authorization = "Basic " + base64Utf8(name + ":" + token);
-  return {
-    name,
-    scope,
-    scheme: "Basic",
-    authorization,
-    issuedAt: now,
-    expiresAt,
-    validForSeconds: AUTH_TOKEN_TTL_SECONDS,
-    singleUse: true
-  };
-}
-
 async function consumeBasicToken(request, env, scope, tokenType = "SHORTCUT") {
   if (!env.AUTH_DB) return false;
   const header = request.headers.get("authorization") || "";
@@ -182,6 +50,7 @@ async function consumeBasicToken(request, env, scope, tokenType = "SHORTCUT") {
     return false;
   }
 }
+
 
 function isPrivateOrLocalHost(hostname) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
@@ -662,123 +531,6 @@ export default {
       }});
     }
 
-    // Only token issuance, test verification, audit logs, and the diagnostic root
-    // require an owner Cloudflare Access identity. The two production data APIs
-    // are bearer-token protected and must work without an interactive Access login.
-    const ownerOnlyPaths = new Set(["/", "/auth", "/auth/test", "/auth/test/verify", "/auth/logs"]);
-    let identity = null;
-    if (ownerOnlyPaths.has(url.pathname)) {
-      identity = await ownerIdentity(request);
-      if (!identity) return json({ error: "Cloudflare Access authentication required." }, 401);
-    }
-
-    if (url.pathname === "/auth/test") {
-      if (request.method !== "POST") return json({ error: "Use POST with a JSON body containing User and Phrase." }, 405);
-      const contentType = request.headers.get("content-type") || "";
-      if (!/application\/json/i.test(contentType)) {
-        return json({ error: "Content-Type must be application/json." }, 415);
-      }
-      let input;
-      try {
-        const body = await request.text();
-        if (body.length > 2048) return json({ error: "The test authentication request body is too large." }, 413);
-        input = JSON.parse(body);
-      } catch {
-        return json({ error: "Send valid JSON containing User and Phrase." }, 400);
-      }
-      if (!input || typeof input !== "object" || Array.isArray(input)) {
-        return json({ error: "The request body must be a JSON object." }, 400);
-      }
-      if (!await validTestCredentials(env, input.User, input.Phrase)) {
-        return json({ error: "Invalid test username or phrase." }, 401);
-      }
-      try {
-        const issued = await issueBasicToken(env, identity, input.User, "/auth/test/verify", "TEST");
-        return new Response(issued.authorization, {
-          headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" }
-        });
-      } catch (error) {
-        return json({ error: error instanceof Error ? error.message : "Unable to issue test authentication token." }, 503);
-      }
-    }
-
-    if (url.pathname === "/auth/test/verify") {
-      if (request.method !== "POST") return json({ error: "Use POST with the test token in the Authorization header." }, 405);
-      const valid = await consumeBasicToken(request, env, "/auth/test/verify", "TEST");
-      if (!valid) return json({ error: "A valid, unused, unexpired TEST token is required." }, 401);
-      return json({ authenticated: true, type: "TEST", user: "EzTheRed", api: null });
-    }
-
-    if (url.pathname === "/auth") {
-      if (request.method !== "POST") return json({ error: "Use POST with a JSON body containing name and api." }, 405);
-      const contentType = request.headers.get("content-type") || "";
-      if (!/application\/json/i.test(contentType)) {
-        return json({ error: "Content-Type must be application/json." }, 415);
-      }
-      let input;
-      try {
-        const body = await request.text();
-        if (body.length > 2048) return json({ error: "The authentication request body is too large." }, 413);
-        input = JSON.parse(body);
-      } catch {
-        return json({ error: "Send valid JSON containing name and api." }, 400);
-      }
-      if (!input || typeof input !== "object" || Array.isArray(input)) {
-        return json({ error: "The request body must be a JSON object." }, 400);
-      }
-      const name = typeof input.name === "string" ? input.name : "";
-      const api = typeof input.api === "string" ? input.api : "";
-      const scope = api === "get-website" ? "/get-website" : api === "vcf-menu" ? "/vcf-menu" : "";
-      if (!/^[A-Za-z0-9._+-]{1,48}$/.test(name)) {
-        return json({ error: "A name is required. Use 1-48 letters, numbers, dots, underscores, plus signs, or hyphens." }, 400);
-      }
-      if (!scope) return json({ error: "api must be get-website or vcf-menu." }, 400);
-      if (!env.AUTH_DB) return json({ error: "Authentication storage is not configured." }, 503);
-      let allowedShortcut;
-      try {
-        allowedShortcut = await env.AUTH_DB.prepare(
-          "SELECT name FROM allowed_shortcuts WHERE name = ? AND enabled = 1"
-        ).bind(name).first();
-      } catch {
-        return json({ error: "Shortcut allowlist storage is unavailable." }, 503);
-      }
-      if (!allowedShortcut) {
-        return json({ error: "This shortcut name is not registered for production API access." }, 403);
-      }
-      try {
-        const issued = await issueBasicToken(env, identity, name, scope);
-        return new Response(issued.authorization, {
-          headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" }
-        });
-      } catch (error) {
-        return json({ error: error instanceof Error ? error.message : "Unable to issue authentication token." }, 503);
-      }
-    }
-
-    if (url.pathname === "/auth/logs") {
-      if (request.method !== "GET") return json({ error: "Use GET." }, 405);
-      if (!env.AUTH_DB) return json({ error: "Authentication storage is not configured." }, 503);
-      const requestedLimit = Number(url.searchParams.get("limit") || 30);
-      const limit = Number.isInteger(requestedLimit) ? Math.min(100, Math.max(1, requestedLimit)) : 30;
-      const result = await env.AUTH_DB.prepare(
-        "SELECT id, name, identity_email, scope, token_type, issued_at, expires_at, used_at, substr(token_hash, 1, 16) AS fingerprint FROM auth_tokens WHERE identity_email = ? ORDER BY issued_at DESC LIMIT ?"
-      ).bind(identity.email, limit).all();
-      return json({
-        count: result.results.length,
-        logs: result.results.map(row => ({
-          id: row.id,
-          name: row.name,
-          identity: row.identity_email,
-          api: row.scope === "/auth/test/verify" ? null : row.scope,
-          type: row.token_type || "SHORTCUT",
-          tokenFingerprint: row.fingerprint,
-          issuedAt: row.issued_at,
-          expiresAt: row.expires_at,
-          usedAt: row.used_at
-        }))
-      });
-    }
-
     if (url.pathname === "/get-website" || url.pathname === "/vcf-menu") {
       if (request.method !== "GET") return json({ error: "Only GET requests are supported for this endpoint." }, 405);
       const valid = await consumeBasicToken(request, env, url.pathname);
@@ -790,9 +542,6 @@ export default {
         name: "Shortcuts Plus Website API",
         status: "ok",
         endpoints: {
-          auth: "POST /auth with JSON {name, api} (Cloudflare Access required)",
-          testAuth: "POST /auth/test with JSON {User, Phrase}; verify at POST /auth/test/verify (TEST-only)",
-          authLogs: "GET /auth/logs?limit=30 (owner-only audit log)",
           website: "GET /get-website?url=<URL-encoded-public-website> (Basic token required)",
           vcfMenu: "GET /vcf-menu?data=<URL-encoded-JSON-object> (Basic token required)"
         },
@@ -824,6 +573,6 @@ export default {
       }
     }
 
-    return json({ error: "Not found", expectedPaths: ["/auth", "/auth/test", "/auth/test/verify", "/auth/logs", "/get-website", "/vcf-menu"] }, 404);
+    return json({ error: "Not found", expectedPaths: ["/get-website", "/vcf-menu"] }, 404);
   }
 };
