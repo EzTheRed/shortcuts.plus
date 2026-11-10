@@ -14,13 +14,100 @@ function json(data, status = 200) {
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET, OPTIONS",
-      "access-control-allow-headers": "Content-Type",
+      "access-control-allow-headers": "Authorization, Content-Type",
       "x-content-type-options": "nosniff"
     }
   });
 }
 
-function isPrivateOrLocalHost(hostname) {
+
+const AUTH_TOKEN_TTL_SECONDS = 10;
+const AUTH_OWNER_EMAIL = "ezieriah@cutey.com";
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function base64Url(bytes) {
+  return bytesToBase64(bytes).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+}
+
+function base64Utf8(value) {
+  return bytesToBase64(new TextEncoder().encode(value));
+}
+
+async function sha256Hex(value) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function ownerIdentity(executionCtx) {
+  if (!executionCtx?.access || typeof executionCtx.access.getIdentity !== "function") return null;
+  try {
+    const identity = await executionCtx.access.getIdentity();
+    if (!identity?.email || identity.email.toLowerCase() !== AUTH_OWNER_EMAIL) return null;
+    return { email: identity.email.toLowerCase(), name: identity.name || "" };
+  } catch {
+    return null;
+  }
+}
+
+async function issueBasicToken(env, identity, name, scope) {
+  if (!env.AUTH_DB) throw new Error("Authentication storage is not configured.");
+  const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
+  const token = base64Url(tokenBytes);
+  const tokenHash = await sha256Hex(token);
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = now + AUTH_TOKEN_TTL_SECONDS;
+  const id = crypto.randomUUID();
+  await env.AUTH_DB.prepare(
+    "INSERT INTO auth_tokens (id, token_hash, name, identity_email, scope, issued_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).bind(id, tokenHash, name, identity.email, scope, now, expiresAt).run();
+  const authorization = "Basic " + base64Utf8(name + ":" + token);
+  return {
+    name,
+    scope,
+    scheme: "Basic",
+    authorization,
+    issuedAt: now,
+    expiresAt,
+    validForSeconds: AUTH_TOKEN_TTL_SECONDS,
+    singleUse: true
+  };
+}
+
+async function consumeBasicToken(request, env, identity, scope) {
+  if (!env.AUTH_DB) return false;
+  const header = request.headers.get("authorization") || "";
+  const match = header.match(/^Basic\\s+([A-Za-z0-9+/]+=*)$/i);
+  if (!match) return false;
+  let decoded;
+  try {
+    const binary = atob(match[1]);
+    const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+    decoded = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return false;
+  }
+  const separator = decoded.indexOf(":");
+  if (separator < 1) return false;
+  const name = decoded.slice(0, separator);
+  const token = decoded.slice(separator + 1);
+  if (!/^[A-Za-z0-9._+-]{1,48}$/.test(name) || !token) return false;
+  const tokenHash = await sha256Hex(token);
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    const consumed = await env.AUTH_DB.prepare(
+      "UPDATE auth_tokens SET used_at = ? WHERE token_hash = ? AND name = ? AND identity_email = ? AND scope = ? AND expires_at > ? AND used_at IS NULL AND revoked = 0 RETURNING id"
+    ).bind(now, tokenHash, name, identity.email, scope, now).first();
+    return Boolean(consumed);
+  } catch {
+    return false;
+  }
+}
+\nfunction isPrivateOrLocalHost(hostname) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") ||
       host.endsWith(".internal") || host.endsWith(".test") || host.endsWith(".invalid") ||
@@ -480,7 +567,7 @@ function vcardResponse(items) {
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET, OPTIONS",
-      "access-control-allow-headers": "Content-Type",
+      "access-control-allow-headers": "Authorization, Content-Type",
       "x-content-type-options": "nosniff"
     }
   });
@@ -497,6 +584,53 @@ export default {
         "access-control-allow-headers": "Content-Type",
         "access-control-max-age": "86400"
       }});
+    }
+
+    const identity = await ownerIdentity(executionCtx);
+    if (!identity) return json({ error: "Cloudflare Access authentication required." }, 401);
+
+    if (url.pathname === "/auth") {
+      if (request.method !== "GET") return json({ error: "Use GET with name and api query parameters." }, 405);
+      const name = url.searchParams.get("name") || "";
+      const api = url.searchParams.get("api") || "";
+      const scope = api === "get-website" ? "/get-website" : api === "vcf-menu" ? "/vcf-menu" : "";
+      if (!/^[A-Za-z0-9._+-]{1,48}$/.test(name)) {
+        return json({ error: "A name is required. Use 1-48 letters, numbers, dots, underscores, plus signs, or hyphens." }, 400);
+      }
+      if (!scope) return json({ error: "Choose api=get-website or api=vcf-menu." }, 400);
+      try {
+        return json(await issueBasicToken(env, identity, name, scope));
+      } catch (error) {
+        return json({ error: error instanceof Error ? error.message : "Unable to issue authentication token." }, 503);
+      }
+    }
+
+    if (url.pathname === "/auth/logs") {
+      if (request.method !== "GET") return json({ error: "Use GET." }, 405);
+      if (!env.AUTH_DB) return json({ error: "Authentication storage is not configured." }, 503);
+      const requestedLimit = Number(url.searchParams.get("limit") || 30);
+      const limit = Number.isInteger(requestedLimit) ? Math.min(100, Math.max(1, requestedLimit)) : 30;
+      const result = await env.AUTH_DB.prepare(
+        "SELECT id, name, identity_email, scope, issued_at, expires_at, used_at, substr(token_hash, 1, 16) AS fingerprint FROM auth_tokens WHERE identity_email = ? ORDER BY issued_at DESC LIMIT ?"
+      ).bind(identity.email, limit).all();
+      return json({
+        count: result.results.length,
+        logs: result.results.map(row => ({
+          id: row.id,
+          name: row.name,
+          identity: row.identity_email,
+          api: row.scope,
+          tokenFingerprint: row.fingerprint,
+          issuedAt: row.issued_at,
+          expiresAt: row.expires_at,
+          usedAt: row.used_at
+        }))
+      });
+    }
+
+    if (url.pathname === "/get-website" || url.pathname === "/vcf-menu") {
+      const valid = await consumeBasicToken(request, env, identity, url.pathname);
+      if (!valid) return json({ error: "A valid, unused, unexpired Basic authentication token for this API is required." }, 401);
     }
 
     if (url.pathname === "/" && request.method === "GET") {
@@ -535,6 +669,6 @@ export default {
       }
     }
 
-    return json({ error: "Not found", expectedPaths: ["/get-website", "/vcf-menu"] }, 404);
+    return json({ error: "Not found", expectedPaths: ["/auth", "/auth/logs", "/get-website", "/vcf-menu"] }, 404);
   }
 };
