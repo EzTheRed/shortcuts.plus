@@ -68,7 +68,20 @@ Use **Get Contents of URL** with method **GET**. No request body or headers are 
 
 ## Authentication
 
-The token-issuing and token-audit routes have been removed. The Worker no longer provides any `/auth` endpoints. The `/get-website` and `/vcf-menu` endpoints still require a valid, unused, unexpired Basic token in the `Authorization` request header. Tokens must be provisioned by a separate trusted system; this Worker cannot issue or display them.
+The public `POST /auth` endpoint issues a short-lived, single-use Basic authorization value. It does not require Cloudflare Access or an identity login.
+
+Send JSON with `name` (1-48 characters; letters, numbers, `.`, `_`, `+`, and `-`) and `api` (`get-website` or `vcf-menu`). The response body is only the Basic authorization value as plain text. Tokens expire after 10 seconds, are scoped to the selected API, and can be used once.
+
+Example request:
+
+```json
+{
+  "name": "WebPortal+",
+  "api": "get-website"
+}
+```
+
+Because `/auth` is public, anyone can request a token. The name is an audit label, not proof of identity. Keep issued authorization values private and use them immediately.
 
 ## Suggested Apple Shortcuts flow
 
