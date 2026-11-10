@@ -54,7 +54,9 @@ For a link, send its `link_N` id and omit `values`. For a form, send the `form_N
 
 ### 3. Generate a vCard menu file
 
-`POST /vcf-menu` with a JSON object. Each property name becomes a contact title, and its string value becomes the subtitle:
+`GET /vcf-menu?data=<URL-encoded-JSON>`
+
+Pass a URL-encoded JSON object in the `data` query parameter. Each property name becomes a contact title, and its string value becomes the subtitle:
 
 ```json
 {
@@ -64,7 +66,13 @@ For a link, send its `link_N` id and omit `values`. For a form, send the `form_N
 }
 ```
 
-Send the object as the raw JSON request body with `Content-Type: application/json`. Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order. Each property name is written to both the `FN` (formatted name) and `N` (name) properties; its value is written to `ORG` (company). Text properties use `CHARSET=UTF-8`. Each contact also gets a `NOTE` identifier (`item_1`, `item_2`, and so on) so Shortcuts can distinguish duplicate titles. Contacts are separated by a blank line. A valid 1×1 transparent PNG is embedded in the `PHOTO` property to suppress the default initials/monogram avatar in contact views that honor the photo; it is not a visible picture.
+For Apple Shortcuts, use **URL Encode** on the JSON text, then append the result to:
+
+```text
+https://api.shortcuts.plus/vcf-menu?data=
+```
+
+Use **Get Contents of URL** with method **GET**. No request body or headers are needed. The endpoint is GET-only; POST is not supported. Keep the JSON compact because URL length limits apply. Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order. Each property name is written to both the `FN` (formatted name) and `N` (name) properties; its value is written to `ORG` (company). Text properties use `CHARSET=UTF-8`. Each contact also gets a `NOTE` identifier (`item_1`, `item_2`, and so on) so Shortcuts can distinguish duplicate titles. Contacts are separated by a blank line. A valid 1×1 transparent PNG is embedded in the `PHOTO` property to suppress the default initials/monogram avatar in contact views that honor the photo; it is not a visible picture.
 
 ## Suggested Apple Shortcuts flow
 
