@@ -63,7 +63,7 @@ For a link, send its `link_N` id and omit `values`. For a form, send the `form_N
 ]
 ```
 
-Returns a downloadable `shortcuts-menu.vcf` file. Each object becomes one vCard contact: `title` is written to both the `FN` (formatted name) and `N` (name) properties, and `subtitle` is written to `ORG` (company). These text properties use the `CHARSET=UTF-8` parameter. The output is text-only and does not include a `PHOTO` property, image URLs, or embedded image data. Send the array as the raw JSON request body with `Content-Type: application/json`.
+Returns a downloadable `shortcuts-menu.vcf` file. Each object becomes one vCard contact: `title` is written to both the `FN` (formatted name) and `N` (name) properties, and `subtitle` is written to `ORG` (company). These text properties use the `CHARSET=UTF-8` parameter. Each card also gets a unique `NOTE` identifier (`item_1`, `item_2`, and so on) so Shortcuts can distinguish duplicate titles and subtitles after selection. The output is text-only and does not include a `PHOTO` property, image URLs, or embedded image data. Send the array as the raw JSON request body with `Content-Type: application/json`.
 
 ## Suggested Apple Shortcuts flow
 
