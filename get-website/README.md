@@ -113,7 +113,11 @@ The Worker accepts only public HTTP/HTTPS destinations, blocks local/private/res
 `GET https://api.shortcuts.plus/api` returns a JSON array of currently active API identifiers, for example:
 
 ```json
-["get-website", "vcf-menu", "posts"]
+{
+  "get-website": { "endpoints": ["/get-website", "/auth"] },
+  "vcf-menu": { "endpoints": ["/vcf-menu", "/auth"] },
+  "posts": { "endpoints": ["/", "/all", "/{id}", "/auth"] }
+}
 ```
 
 ## Public Posts API
