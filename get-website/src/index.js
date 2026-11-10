@@ -516,14 +516,15 @@ export default {
         status: "ok",
         endpoints: {
           initial: "/get-website?url=https%3A%2F%2Fexample.com",
-          action: "POST /action with { url, actionId, values? }"
+          action: "POST /action with { url, actionId, values? }",
+          vcfMenu: "POST /vcf-menu with a JSON object mapping contact titles to subtitles"
         },
         response: { file: "HTML string", dynamic: "native Shortcuts interaction definitions", metadata: "page information" }
       });
     }
 
 
-    if (url.pathname === "/get-vcf") {
+    if (url.pathname === "/vcf-menu" || url.pathname === "/get-vcf") {
       if (request.method !== "POST") return json({ error: "Use POST with a JSON object mapping contact titles to subtitles." }, 405);
       try {
         const items = await request.json();
@@ -581,6 +582,6 @@ export default {
       }
     }
 
-    return json({ error: "Not found", expectedPaths: ["/get-website", "/action"] }, 404);
+    return json({ error: "Not found", expectedPaths: ["/get-website", "/action", "/vcf-menu"] }, 404);
   }
 };
