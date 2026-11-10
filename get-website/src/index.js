@@ -21,6 +21,11 @@ function json(data, status = 200) {
 }
 
 
+async function sha256Hex(value) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
 async function consumeBasicToken(request, env, scope, tokenType = "SHORTCUT") {
   if (!env.AUTH_DB) return false;
   const header = request.headers.get("authorization") || "";
