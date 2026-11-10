@@ -31,7 +31,7 @@ function bytesToBase64(bytes) {
 }
 
 function base64Url(bytes) {
-  return bytesToBase64(bytes).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+  return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function base64Utf8(value) {
@@ -81,7 +81,7 @@ async function issueBasicToken(env, identity, name, scope) {
 async function consumeBasicToken(request, env, identity, scope) {
   if (!env.AUTH_DB) return false;
   const header = request.headers.get("authorization") || "";
-  const match = header.match(/^Basic\\s+([A-Za-z0-9+/]+=*)$/i);
+  const match = header.match(/^Basic\s+([A-Za-z0-9+/]+=*)$/i);
   if (!match) return false;
   let decoded;
   try {
@@ -581,7 +581,7 @@ export default {
       return new Response(null, { status: 204, headers: {
         "access-control-allow-origin": "*",
         "access-control-allow-methods": "GET, OPTIONS",
-        "access-control-allow-headers": "Content-Type",
+        "access-control-allow-headers": "Authorization, Content-Type",
         "access-control-max-age": "86400"
       }});
     }
@@ -629,6 +629,7 @@ export default {
     }
 
     if (url.pathname === "/get-website" || url.pathname === "/vcf-menu") {
+      if (request.method !== "GET") return json({ error: "Only GET requests are supported for this endpoint." }, 405);
       const valid = await consumeBasicToken(request, env, identity, url.pathname);
       if (!valid) return json({ error: "A valid, unused, unexpired Basic authentication token for this API is required." }, 401);
     }
@@ -638,8 +639,10 @@ export default {
         name: "Shortcuts Plus Website API",
         status: "ok",
         endpoints: {
-          website: "GET /get-website?url=<URL-encoded-public-website>",
-          vcfMenu: "GET /vcf-menu?data=<URL-encoded-JSON-object>"
+          auth: "GET /auth?name=<client-name>&api=get-website|vcf-menu (Cloudflare Access required)",
+          authLogs: "GET /auth/logs?limit=30 (owner-only audit log)",
+          website: "GET /get-website?url=<URL-encoded-public-website> (Basic token required)",
+          vcfMenu: "GET /vcf-menu?data=<URL-encoded-JSON-object> (Basic token required)"
         },
         response: { file: "packaged HTML string", dynamic: "preloaded link and GET-form definitions", metadata: "page information" }
       });
