@@ -625,12 +625,8 @@ export default {
       }
       try {
         const issued = await issueBasicToken(env, identity, input.User, "/auth/test/verify", "TEST");
-        return json({
-          ...issued,
-          type: "TEST",
-          verificationEndpoint: "https://api.shortcuts.plus/auth/test/verify",
-          api: null,
-          note: "This test token only verifies test authentication; it cannot access production APIs."
+        return new Response(issued.authorization, {
+          headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" }
         });
       } catch (error) {
         return json({ error: error instanceof Error ? error.message : "Unable to issue test authentication token." }, 503);
@@ -681,7 +677,10 @@ export default {
         return json({ error: "This shortcut name is not registered for production API access." }, 403);
       }
       try {
-        return json(await issueBasicToken(env, identity, name, scope));
+        const issued = await issueBasicToken(env, identity, name, scope);
+        return new Response(issued.authorization, {
+          headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" }
+        });
       } catch (error) {
         return json({ error: error instanceof Error ? error.message : "Unable to issue authentication token." }, 503);
       }
