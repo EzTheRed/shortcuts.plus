@@ -634,12 +634,13 @@ export default {
         return new Response("GET only", { status: 405, headers: { "content-type": "text/plain; charset=utf-8" } });
       }
       const directory = [
-        "https://api.shortcuts.plus/auth",
-        "https://api.shortcuts.plus/get-website",
-        "https://api.shortcuts.plus/vcf-menu",
-        "https://posts.shortcuts.plus/",
-        "https://posts.shortcuts.plus/auth",
-        "https://posts.shortcuts.plus/all"
+        "POST https://api.shortcuts.plus/auth",
+        "POST https://api.shortcuts.plus/get-website",
+        "POST https://api.shortcuts.plus/vcf-menu",
+        "POST https://posts.shortcuts.plus/auth",
+        "POST https://posts.shortcuts.plus/",
+        "GET https://posts.shortcuts.plus/all",
+        "GET https://posts.shortcuts.plus/{id}"
       ];
       return new Response("[\n  " + directory.map(path => JSON.stringify(path)).join(",\n  ") + "\n]", {
         status: 200,
@@ -701,7 +702,7 @@ export default {
     }
 
     if (url.pathname === "/get-website" || url.pathname === "/vcf-menu") {
-      if (request.method !== "GET") return json({ error: "Only GET requests are supported for this endpoint." }, 405);
+      if (request.method !== "POST") return json({ error: "Use POST with a JSON request body for this endpoint." }, 405);
       const apiId = url.pathname === "/get-website" ? API_IDS.GET_WEBSITE : API_IDS.VCF_MENU;
       const valid = await consumeBasicToken(request, env, apiId);
       if (!valid) return json({ error: "A valid, unused, unexpired Basic authentication token for this API is required." }, 401);
@@ -713,8 +714,8 @@ export default {
         status: "ok",
         endpoints: {
           auth: "POST /auth with JSON {api}; returns a short-lived API-ID-bound Basic token (get-website, vcf-menu, or posts)",
-          website: "GET /get-website?url=<URL-encoded-public-website> (Basic token required)",
-          vcfMenu: "GET /vcf-menu?data=<URL-encoded-JSON-object> (Basic token required)"
+          website: "POST /get-website with JSON { url: <public-http-or-https-url> } (Basic token required)",
+          vcfMenu: "POST /vcf-menu with a JSON object mapping contact titles to subtitles (Basic token required)"
         },
         response: { file: "packaged HTML string", dynamic: "preloaded link and GET-form definitions", metadata: "page information" }
       });
@@ -722,21 +723,24 @@ export default {
 
 
     if (url.pathname === "/vcf-menu") {
-      if (request.method !== "GET") return json({ error: "Use GET with a URL-encoded JSON object in the data query parameter." }, 405);
-      const data = url.searchParams.get("data");
-      if (!data) return json({ error: "Missing required data query parameter. URL-encode a JSON object mapping contact titles to subtitles." }, 400);
-      if (data.length > 8000) return json({ error: "The encoded data parameter is too long. Keep the JSON small enough to fit in a URL." }, 414);
-      try {
-        return vcardResponse(JSON.parse(data));
-      } catch (error) {
-        return json({ error: "The data query parameter must contain valid URL-encoded JSON." }, 400);
-      }
+      if (request.method !== "POST") return json({ error: "Use POST with a JSON object mapping contact titles to subtitles." }, 405);
+      const contentLength = Number(request.headers.get("content-length") || 0);
+      if (contentLength > 16000) return json({ error: "The JSON request body is too large." }, 413);
+      let data;
+      try { data = await request.json(); }
+      catch { return json({ error: "Request body must be valid JSON." }, 400); }
+      return vcardResponse(data);
     }
 
     if (url.pathname === "/get-website") {
-      if (request.method !== "GET") return json({ error: "Only GET requests are supported for this endpoint." }, 405);
-      const requestedUrl = url.searchParams.get("url");
-      if (!requestedUrl) return json({ error: "Missing required url parameter." }, 400);
+      if (request.method !== "POST") return json({ error: "Use POST with JSON { url: <public-http-or-https-url> }." }, 405);
+      const contentLength = Number(request.headers.get("content-length") || 0);
+      if (contentLength > 8192) return json({ error: "The JSON request body is too large." }, 413);
+      let body;
+      try { body = await request.json(); }
+      catch { return json({ error: "Request body must be valid JSON." }, 400); }
+      const requestedUrl = typeof body?.url === "string" ? body.url : "";
+      if (!requestedUrl) return json({ error: "Missing required string field: url." }, 400);
       try {
         return json(await buildPage(requestedUrl, executionCtx));
       } catch (error) {
