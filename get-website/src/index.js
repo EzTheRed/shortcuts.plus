@@ -479,7 +479,7 @@ function vcardResponse(items) {
       "content-disposition": 'attachment; filename="shortcuts-menu.vcf"',
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-methods": "GET, OPTIONS",
       "access-control-allow-headers": "Content-Type",
       "x-content-type-options": "nosniff"
     }
@@ -517,7 +517,7 @@ export default {
         endpoints: {
           initial: "/get-website?url=https%3A%2F%2Fexample.com",
           action: "POST /action with { url, actionId, values? }",
-          vcfMenu: "POST /vcf-menu with a JSON object mapping contact titles to subtitles"
+          vcfMenu: "GET /vcf-menu?data=<URL-encoded-JSON-object>"
         },
         response: { file: "HTML string", dynamic: "native Shortcuts interaction definitions", metadata: "page information" }
       });
@@ -525,12 +525,14 @@ export default {
 
 
     if (url.pathname === "/vcf-menu") {
-      if (request.method !== "POST") return json({ error: "Use POST with a JSON object mapping contact titles to subtitles." }, 405);
+      if (request.method !== "GET") return json({ error: "Use GET with a URL-encoded JSON object in the data query parameter." }, 405);
+      const data = url.searchParams.get("data");
+      if (!data) return json({ error: "Missing required data query parameter. URL-encode a JSON object mapping contact titles to subtitles." }, 400);
+      if (data.length > 8000) return json({ error: "The encoded data parameter is too long. Keep the JSON small enough to fit in a URL." }, 414);
       try {
-        const items = await request.json();
-        return vcardResponse(items);
+        return vcardResponse(JSON.parse(data));
       } catch (error) {
-        return json({ error: "The request body must be valid JSON." }, 400);
+        return json({ error: "The data query parameter must contain valid URL-encoded JSON." }, 400);
       }
     }
 
