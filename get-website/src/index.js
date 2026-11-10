@@ -277,135 +277,8 @@ async function fetchPage(startUrl) {
 }
 
 
-function attr(attrs, name) {
-  const re = new RegExp("(?:^|\\s)" + name + "\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))", "i");
-  const m = attrs.match(re);
-  return m ? (m[1] ?? m[2] ?? m[3] ?? "") : "";
-}
-
-function labelText(value, fallback) {
-  const text = value.replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"').replace(/&#39;/g, "'")
-    .replace(/\s+/g, " ").trim();
-  return (text || fallback).slice(0, 120);
-}
-
-function safeActionUrl(raw, base) {
-  try {
-    const u = validateTarget(new URL(raw, base).href);
-    return u.href;
-  } catch {
-    return null;
-  }
-}
-
-function extractDynamic(html, pageUrl, maxItems = 60) {
-  const dynamic = [];
-  const seen = new Set();
-  const add = item => {
-    if (dynamic.length < maxItems && !seen.has(item.id)) {
-      seen.add(item.id);
-      dynamic.push(item);
-    }
-  };
-
-  const anchorRe = /<a\b([^>]*)>([\s\S]*?)<\/a\s*>/gi;
-  let n = 0;
-  for (const m of html.matchAll(anchorRe)) {
-    const rawHref = attr(m[1], "href");
-    if (!rawHref || /^(javascript:|mailto:|tel:|#)/i.test(rawHref)) continue;
-    const href = safeActionUrl(rawHref, pageUrl);
-    if (!href) continue;
-    n++;
-    add({
-      id: "link_" + n,
-      label: attr(m[1], "aria-label") || labelText(m[2], "Open link " + n),
-      type: "link",
-      method: "GET",
-      target: href
-    });
-  }
-
-  const formRe = /<form\b([^>]*)>([\s\S]*?)<\/form\s*>/gi;
-  let formIndex = 0;
-  for (const form of html.matchAll(formRe)) {
-    const attrs = form[1];
-    const method = (attr(attrs, "method") || "GET").toUpperCase();
-    if (method !== "GET") continue;
-    const rawAction = attr(attrs, "action") || pageUrl;
-    const target = safeActionUrl(rawAction, pageUrl);
-    if (!target) continue;
-    formIndex++;
-    const fields = [];
-    const controlRe = /<(input|textarea|select)\b([^>]*?)(?:>([\s\S]*?)<\/\1\s*>|\/?>)/gi;
-    let fieldIndex = 0;
-    for (const control of form[2].matchAll(controlRe)) {
-      const tag = control[1].toLowerCase();
-      const a = control[2];
-      const type = (attr(a, "type") || (tag === "select" ? "select" : tag)).toLowerCase();
-      const name = attr(a, "name");
-      if (!name || ["submit", "button", "reset", "image", "file"].includes(type) || attr(a, "disabled") !== "") continue;
-      fieldIndex++;
-      const options = [];
-      if (tag === "select") {
-        const optionRe = /<option\b([^>]*)>([\s\S]*?)<\/option\s*>/gi;
-        for (const opt of (control[3] || "").matchAll(optionRe)) {
-          const value = attr(opt[1], "value") || labelText(opt[2], "");
-          if (value) options.push({ label: labelText(opt[2], value), value });
-        }
-      }
-      fields.push({
-        id: "field_" + fieldIndex,
-        name,
-        label: attr(a, "aria-label") || attr(a, "placeholder") || attr(a, "title") || name,
-        type: tag === "select" ? "select" : (type === "checkbox" || type === "radio" ? type : "text"),
-        required: /(?:^|\s)required(?:\s|$)/i.test(a),
-        ...(options.length ? { options } : {}),
-        ...(type === "checkbox" ? { value: attr(a, "value") || "on" } : {})
-      });
-    }
-    if (fields.length) {
-      add({
-        id: "form_" + formIndex,
-        label: attr(attrs, "aria-label") || attr(attrs, "name") || "Submit form " + formIndex,
-        type: "form",
-        method: "GET",
-        target,
-        fields
-      });
-    }
-  }
-
-  return dynamic;
-}
-
-function responseDictionary(file, dynamic, metadata = {}) {
-  return {
-    file,
-    dynamic,
-    metadata: {
-      title: metadata.title || "Webpage",
-      source: metadata.source || "",
-      version: 1,
-      generatedAt: new Date().toISOString(),
-      ...metadata
-    },
-    instructions: {
-      interaction: "Use the dynamic array to build native Shortcuts menus and prompts. For a selected link, request /get-website again using its target URL. For a GET form, collect the listed field values, add them to the target URL as query parameters, then request /get-website with that URL.",
-      endpoint: "https://api.shortcuts.plus/get-website"
-    }
-  };
-}
-
-function pageTitle(html) {
-  const m = html.match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i);
-  return m ? labelText(m[1], "Webpage") : "Webpage";
-}
-
 function pageCacheKey(url) {
-  const key = new URL("https://api.shortcuts.plus/__page-cache-v8");
+  const key = new URL("https://api.shortcuts.plus/__html-page-cache-v1");
   key.searchParams.set("url", validateTarget(url).href);
   return new Request(key.href, { method: "GET" });
 }
@@ -418,7 +291,7 @@ function escapeHtml(value) {
   })[char]);
 }
 
-async function renderShortcutsPlusMenu() {
+async function renderShortcutsPlusPage(env) {
   const dataUrl = "https://shortcuts.plus/data/shortcuts.json";
   const context = makeContext();
   const fetched = await fetchResource(dataUrl, context, "js");
@@ -439,11 +312,16 @@ async function renderShortcutsPlusMenu() {
       let resolved = item;
       if (typeof item.id === "string" && item.id) {
         try {
-          const response = await fetch("https://s.shortcuts.plus/", {
+          const registryUrl = "https://s.shortcuts.plus/";
+          const options = {
             method: "POST",
             headers: { "content-type": "application/json", accept: "application/json" },
             body: JSON.stringify({ shortcut: item.id })
-          });
+          };
+          // Same-zone routed Workers must communicate through a service binding.
+          const response = env.REGISTRY
+            ? await env.REGISTRY.fetch(new Request(registryUrl, options))
+            : await fetch(registryUrl, options);
           const data = await response.json();
           if (response.ok && data.success) resolved = {
             ...item, title: data.name || item.title,
@@ -498,7 +376,7 @@ async function renderShortcutsPlusMenu() {
     '</main></body></html>'
   ].join("\n");
 
-  return { html, count: entries.length, dataUrl };
+  return html;
 }
 
 function parseAssignedJson(html, variableName) {
@@ -624,16 +502,27 @@ function renderYouTubeFeed(videos, pageUrl) {
     '</main></body></html>';
 }
 
-async function buildPage(url, executionCtx = null, shouldPreload = true) {
+function htmlFileResponse(html) {
+  return new Response(html, {
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "content-disposition": 'attachment; filename="webpage.html"',
+      "cache-control": "no-store",
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-headers": "Authorization, Content-Type",
+      "access-control-expose-headers": "Content-Disposition",
+      "x-content-type-options": "nosniff"
+    }
+  });
+}
+
+async function buildPage(url, env) {
   const target = validateTarget(url).href;
   const cache = caches.default;
   const key = pageCacheKey(target);
   const cached = await cache.match(key);
-  if (cached) {
-    const data = await cached.json();
-    data.metadata.cacheHit = true;
-    return data;
-  }
+  if (cached) return cached.text();
 
   const fetched = await fetchPage(validateTarget(target));
   const final = new URL(fetched.finalUrl);
@@ -641,93 +530,26 @@ async function buildPage(url, executionCtx = null, shouldPreload = true) {
     (final.hostname.toLowerCase() === "shortcuts.plus" || final.hostname.toLowerCase() === "www.shortcuts.plus") &&
     final.pathname === "/" && !final.search;
 
+  let html;
   if (isShortcutsPlusHome) {
-    const menu = await renderShortcutsPlusMenu();
-    const dynamic = extractDynamic(menu.html, fetched.finalUrl, Infinity);
-    const result = responseDictionary(menu.html, dynamic, {
-      title: "Shortcuts Plus — All Shortcuts",
-      source: fetched.finalUrl,
-      finalUrl: fetched.finalUrl,
-      renderer: "shortcuts-plus-menu",
-      shortcutCount: menu.count,
-      dataSource: menu.dataUrl,
-      inlinedAssets: 0,
-      skippedAssets: [],
-      cacheHit: false,
-      preloaded: []
-    });
-    await cache.put(key, new Response(JSON.stringify(result), {
-      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=180" }
-    }));
-    return result;
+    html = await renderShortcutsPlusPage(env);
+  } else {
+    const videos = /(^|\.)youtube\.com$/i.test(final.hostname)
+      ? extractYouTubeVideos(fetched.html, fetched.finalUrl)
+      : [];
+    html = videos.length
+      ? renderYouTubeFeed(videos, fetched.finalUrl)
+      : (await packageHtml(fetched.html, fetched.finalUrl)).html;
   }
 
-  const youtubeHost = /(^|\.)youtube\.com$/i.test(final.hostname);
-  if (youtubeHost) {
-    const videos = extractYouTubeVideos(fetched.html, fetched.finalUrl);
-    if (videos.length) {
-      const rendered = renderYouTubeFeed(videos, fetched.finalUrl);
-      const dynamic = extractDynamic(rendered, fetched.finalUrl);
-      const result = responseDictionary(rendered, dynamic, {
-        title: "YouTube — Static Feed",
-        source: fetched.finalUrl,
-        finalUrl: fetched.finalUrl,
-        renderer: "youtube-static-feed",
-        videoCount: videos.length,
-        inlinedAssets: 0,
-        skippedAssets: [],
-        cacheHit: false,
-        preloaded: []
-      });
-      await cache.put(key, new Response(JSON.stringify(result), {
-        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=180" }
-      }));
-      return result;
-    }
-  }
-
-  const packaged = await packageHtml(fetched.html, fetched.finalUrl);
-  const dynamic = extractDynamic(fetched.html, fetched.finalUrl);
-  const preloadCandidates = [];
-  if (shouldPreload) {
-    const origin = new URL(fetched.finalUrl).origin;
-    for (const item of dynamic) {
-      if (item.type !== "link") continue;
-      try {
-        const candidate = validateTarget(item.target);
-        if (candidate.origin !== origin || candidate.href === fetched.finalUrl) continue;
-        if (preloadCandidates.some(x => x.target === candidate.href)) continue;
-        preloadCandidates.push({ id: item.id, label: item.label, target: candidate.href });
-        if (preloadCandidates.length >= 4) break;
-      } catch {}
-    }
-  }
-
-  const result = responseDictionary(packaged.html, dynamic, {
-    title: pageTitle(fetched.html),
-    source: fetched.finalUrl,
-    finalUrl: fetched.finalUrl,
-    inlinedAssets: packaged.context.assets,
-    skippedAssets: packaged.context.skipped,
-    cacheHit: false,
-    preloaded: preloadCandidates.map(({ id, label }) => ({ id, label }))
-  });
-
-  await cache.put(key, new Response(JSON.stringify(result), {
+  await cache.put(key, new Response(html, {
     headers: {
-      "content-type": "application/json; charset=utf-8",
+      "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=180"
     }
   }));
-
-  if (executionCtx && typeof executionCtx.waitUntil === "function" && preloadCandidates.length) {
-    executionCtx.waitUntil(Promise.allSettled(
-      preloadCandidates.map(item => buildPage(item.target, null, false))
-    ));
-  }
-  return result;
+  return html;
 }
-
 
 
 function escapeVCard(value) {
@@ -803,7 +625,7 @@ function vcardResponse(items) {
 
 
 export default {
-  async fetch(request, env, executionCtx) {
+  async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: {
@@ -865,7 +687,7 @@ export default {
           website: "POST /get-website with JSON { url: <public-http-or-https-url> } (Basic token required)",
           vcfMenu: "POST /vcf-menu with a JSON object mapping contact titles to subtitles (Basic token required)"
         },
-        response: { file: "packaged HTML string", dynamic: "preloaded link and GET-form definitions", metadata: "page information" }
+        response: "Packaged HTML file (text/html; attachment filename: webpage.html)"
       });
     }
 
@@ -890,7 +712,7 @@ export default {
       const requestedUrl = typeof body?.url === "string" ? body.url : "";
       if (!requestedUrl) return json({ error: "Missing required string field: url." }, 400);
       try {
-        return json(await buildPage(requestedUrl, executionCtx));
+        return htmlFileResponse(await buildPage(requestedUrl, env));
       } catch (error) {
         return json({ error: error instanceof Error ? error.message : "Unable to package webpage." }, 400);
       }
