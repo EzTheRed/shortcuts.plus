@@ -13,7 +13,7 @@ function json(data, status = 200) {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET, OPTIONS",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
       "access-control-allow-headers": "Authorization, Content-Type",
       "x-content-type-options": "nosniff"
     }
@@ -567,7 +567,7 @@ function vcardResponse(items) {
       "content-disposition": 'attachment; filename="shortcuts-menu.vcf"',
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET, OPTIONS",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
       "access-control-allow-headers": "Authorization, Content-Type",
       "x-content-type-options": "nosniff"
     }
@@ -581,7 +581,7 @@ export default {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: {
         "access-control-allow-origin": "*",
-        "access-control-allow-methods": "GET, OPTIONS",
+        "access-control-allow-methods": "GET, POST, OPTIONS",
         "access-control-allow-headers": "Authorization, Content-Type",
         "access-control-max-age": "86400"
       }});
@@ -591,14 +591,29 @@ export default {
     if (!identity) return json({ error: "Cloudflare Access authentication required." }, 401);
 
     if (url.pathname === "/auth") {
-      if (request.method !== "GET") return json({ error: "Use GET with name and api query parameters." }, 405);
-      const name = url.searchParams.get("name") || "";
-      const api = url.searchParams.get("api") || "";
+      if (request.method !== "POST") return json({ error: "Use POST with a JSON body containing name and api." }, 405);
+      const contentType = request.headers.get("content-type") || "";
+      if (!/application\\/json/i.test(contentType)) {
+        return json({ error: "Content-Type must be application/json." }, 415);
+      }
+      let input;
+      try {
+        const body = await request.text();
+        if (body.length > 2048) return json({ error: "The authentication request body is too large." }, 413);
+        input = JSON.parse(body);
+      } catch {
+        return json({ error: "Send valid JSON containing name and api." }, 400);
+      }
+      if (!input || typeof input !== "object" || Array.isArray(input)) {
+        return json({ error: "The request body must be a JSON object." }, 400);
+      }
+      const name = typeof input.name === "string" ? input.name : "";
+      const api = typeof input.api === "string" ? input.api : "";
       const scope = api === "get-website" ? "/get-website" : api === "vcf-menu" ? "/vcf-menu" : "";
       if (!/^[A-Za-z0-9._+-]{1,48}$/.test(name)) {
         return json({ error: "A name is required. Use 1-48 letters, numbers, dots, underscores, plus signs, or hyphens." }, 400);
       }
-      if (!scope) return json({ error: "Choose api=get-website or api=vcf-menu." }, 400);
+      if (!scope) return json({ error: "api must be get-website or vcf-menu." }, 400);
       try {
         return json(await issueBasicToken(env, identity, name, scope));
       } catch (error) {
@@ -640,7 +655,7 @@ export default {
         name: "Shortcuts Plus Website API",
         status: "ok",
         endpoints: {
-          auth: "GET /auth?name=<client-name>&api=get-website|vcf-menu (Cloudflare Access required)",
+          auth: "POST /auth with JSON {name, api} (Cloudflare Access required)",
           authLogs: "GET /auth/logs?limit=30 (owner-only audit log)",
           website: "GET /get-website?url=<URL-encoded-public-website> (Basic token required)",
           vcfMenu: "GET /vcf-menu?data=<URL-encoded-JSON-object> (Basic token required)"
