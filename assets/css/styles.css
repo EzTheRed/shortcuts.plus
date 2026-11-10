@@ -90,3 +90,31 @@ html:not(.theme-ready) *,html:not(.theme-ready) *::before,html:not(.theme-ready)
 .simple-card-actions .simple-get{font-weight:650}
 .simple-card-actions a:hover,.simple-card-actions button:hover{text-decoration:underline}
 @media(max-width:640px){.simple-main{padding-top:42px;padding-bottom:55px}.simple-library{margin-top:32px}.simple-card{align-items:flex-start;flex-direction:column;gap:11px;padding:16px 0}.simple-card-actions{gap:18px}.simple-list-heading h2{font-size:21px}}
+
+/* A quiet, spacious collection with a shared visual language for Quick Look. */
+.simple-main{padding-top:0;max-width:1024px}
+.simple-heading{text-align:center;padding:88px 0 40px}
+.simple-heading .eyebrow{font-size:14px;letter-spacing:0;text-transform:none;margin-bottom:18px}
+.simple-heading h1{font-size:clamp(44px,8vw,80px);line-height:1.05;letter-spacing:-.055em}
+.simple-heading h1 span{color:var(--faint)}
+.simple-heading>p:last-of-type{max-width:540px;margin:24px auto 0;font-size:21px;line-height:1.45;color:var(--faint)}
+.simple-heading .button{margin-top:28px;background:#0071e3;color:#fff;padding:12px 23px;font-size:16px}
+.simple-search{margin:0 auto;border-radius:16px;background:var(--surface);box-shadow:none}
+.simple-library{margin-top:72px}
+.simple-list-heading{border:0;padding-bottom:20px}
+.simple-list-heading h2{font-size:28px;letter-spacing:-.04em}
+.simple-filter{border-top:1px solid var(--border-light);border-bottom:0;padding:14px 0 24px}
+.simple-card-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.simple-card{min-width:0;align-items:stretch;flex-direction:column;justify-content:space-between;gap:28px;padding:32px;border:0;border-radius:28px;background:var(--surface)}
+.collection-icon{display:grid;place-items:center;width:52px;height:52px;margin-bottom:24px;border-radius:15px;background:#0071e3;color:white}
+.collection-icon svg{width:28px;height:28px}
+.simple-card h3{font-size:28px;line-height:1.2;letter-spacing:-.04em;overflow-wrap:anywhere}
+.simple-card p{margin-top:12px;font-size:17px;line-height:1.5;overflow-wrap:anywhere;color:var(--faint)}
+.simple-card-actions{flex-wrap:wrap;gap:20px}
+.simple-card-actions a,.simple-card-actions button{font-size:14px;min-height:44px;display:inline-flex;align-items:center}
+.simple-card-actions .simple-get{padding:10px 19px;border-radius:999px;background:#0071e3;color:#fff;font-weight:400}
+.simple-card-actions .simple-get:hover{background:#0077ed;text-decoration:none}
+.library-page{padding-top:64px}
+.library-page .card{border:0;border-radius:24px;padding:28px}
+.detail-card{border:0;box-shadow:none}
+@media(max-width:640px){.simple-heading{padding:60px 0 32px}.simple-heading>p:last-of-type{font-size:19px}.simple-library{margin-top:48px}.simple-list-heading h2{font-size:24px}.simple-card-list{grid-template-columns:1fr;gap:16px}.simple-card{padding:26px}.simple-card h3{font-size:26px}.simple-card-actions{gap:18px}.library-page{padding-top:36px}}

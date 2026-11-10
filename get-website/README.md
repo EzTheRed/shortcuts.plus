@@ -96,7 +96,7 @@ The Worker packages the requested page and preloads up to four unique same-origi
 
 The packager inlines linked stylesheets, nested CSS imports (limited depth), and external classic script files, and rewrites CSS URLs to absolute URLs. It injects a base URL so remaining relative resources can resolve.
 
-When the requested page is the Shortcuts Plus homepage (`https://shortcuts.plus/`), the API uses a dedicated compact menu renderer instead of returning the regular website layout. It fetches `/data/shortcuts.json` and creates one mobile-friendly, vertically scrollable menu containing up to 60 entries, with each item's title, description, badge, categories, and destination link. The same entries are exposed in the `dynamic` array (with the item title as the label), so Shortcuts can also build a native **Choose from List** menu. This is a static pre-rendered view and does not require JavaScript execution in Quick Look.
+When the requested page is the Shortcuts Plus homepage (`https://shortcuts.plus/`), the API uses a dedicated compact menu renderer instead of returning the regular website layout. It fetches `/data/shortcuts.json` and creates one mobile-friendly, vertically scrollable menu containing every valid catalog entry, with each item's title, description, badge, categories, and destination link. The same entries are exposed in the `dynamic` array (with the item title as the label), so Shortcuts can also build a native **Choose from List** menu. This is a static pre-rendered view and does not require JavaScript execution in Quick Look.
 
 It does not execute JavaScript or render the page in Chromium. It cannot reliably discover actions implemented only by JavaScript, buttons with no ordinary link/form behavior, dynamically created controls, or forms using POST. The interaction extractor exposes ordinary links and GET forms only. Some sites may require cookies, authentication, anti-bot challenges, or browser execution and therefore may not work.
 
@@ -118,3 +118,18 @@ The former Posts API has been retired. No publishing, listing, or individual-pos
 
 
 `POST https://api.shortcuts.plus/get-website` with JSON body `{ "url": "https://example.com" }`
+
+## Shortcuts+ static collection
+
+Packaging `https://shortcuts.plus/` renders every valid catalog entry from
+`data/shortcuts.json` as a self-contained, script-free collection. ID-based
+entries resolve their current name, description, and download URL through the
+same registry as the website (`POST https://s.shortcuts.plus/`). Legacy HTTPS
+links remain supported. If a lookup fails or returns an unsafe link, the entry
+still appears with a link to its detail page. The static collection and its
+native menu links are not limited to 60 shortcuts.
+
+Run `npm test` in `get-website` for catalog regression tests. These tests exercise
+the request handler with mocked registry, authentication storage, and cache;
+they do not call production services. Deploy both the website and the
+`shortcuts-get-website` Worker to release the matching views.
