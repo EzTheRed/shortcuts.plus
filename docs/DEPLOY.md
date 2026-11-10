@@ -10,9 +10,9 @@ CNAME                   custom domain (shortcuts.plus)
 _headers                cache rules for Cloudflare Pages
 _redirects              old flat URLs → new folders
 assets/css/styles.css   site styles
-assets/js/app.js        gallery app
+assets/js/app.js        registry API client and shared UI helpers
 assets/icons/favicon.svg
-data/shortcuts.json     shortcut library
+data/shortcuts.json     legacy index-link compatibility catalog
 docs/DEPLOY.md          this note (not linked from the site)
 ```
 
@@ -24,6 +24,12 @@ GitHub Pages does not read `_redirects`. The old `/library.html` file still send
 - `shortcuts.json`
 - `DEPLOY-README.txt`
 
-Add new shortcuts in `data/shortcuts.json`. Each category is a top-level key. Icons the app knows: `music`, `image`, `note`, `calendar`, `bell`, `scan`, `spark`.
+The website loads every active shortcut from `GET https://s.shortcuts.plus/all`.
+Shortcut detail pages use `POST https://s.shortcuts.plus/details` with
+`{"details":"all","shortcut":"<identifier>"}` and display the current version.
+Maintain new shortcut metadata in the registry database. See
+[`registry/README.md`](../registry/README.md) for the API and deployment contract.
+Keep `data/shortcuts.json` for old index-based detail links and existing consumers.
+Icons the app knows: `music`, `image`, `note`, `calendar`, `bell`, `scan`, `spark`.
 
 Paths start with `/` because the live site is the domain root (`shortcuts.plus`).

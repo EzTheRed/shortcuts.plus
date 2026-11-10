@@ -1,0 +1,19 @@
+{
+  "$schema": "../get-website/node_modules/wrangler/config-schema.json",
+  "name": "shortcuts-registry",
+  "account_id": "0e819bfcac28eb577c6ef2a65aca6efc",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-10",
+  "routes": [{ "pattern": "s.shortcuts.plus/*", "zone_name": "shortcuts.plus" }],
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "shortcuts-registry",
+    "database_id": "6b5067d7-fb29-4333-b9f6-410cb711a469"
+  }],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "enabled": true, "head_sampling_rate": 1, "persist": true, "invocation_logs": true },
+    "traces": { "enabled": true, "persist": true, "head_sampling_rate": 1 }
+  }
+}
