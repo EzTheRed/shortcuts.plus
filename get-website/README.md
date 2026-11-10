@@ -107,6 +107,15 @@ It does not execute JavaScript or render the page in Chromium. It cannot reliabl
 The Worker accepts only public HTTP/HTTPS destinations, blocks local/private/reserved hosts, validates redirects, and does not forward user cookies or credentials. HTML is limited to 2 MB; each fetched CSS/JS resource to 1 MB; aggregate CSS/JS to 4 MB; and no more than 24 external CSS/JS resources are fetched. Images, fonts, video, and other binary media remain external.
 
 
+
+## Active API directory
+
+`GET https://api.shortcuts.plus/api` returns a JSON array of currently active API identifiers, for example:
+
+```json
+["get-website", "vcf-menu", "posts"]
+```
+
 ## Public Posts API
 
 The Posts API is served from `https://posts.shortcuts.plus`. Posts are public to read. Publishing requires a short-lived, single-use Basic token scoped specifically to the `posts` API.
