@@ -405,7 +405,7 @@ function pageTitle(html) {
 }
 
 function pageCacheKey(url) {
-  const key = new URL("https://api.shortcuts.plus/__page-cache-v5");
+  const key = new URL("https://api.shortcuts.plus/__page-cache-v6");
   key.searchParams.set("url", validateTarget(url).href);
   return new Request(key.href, { method: "GET" });
 }
@@ -442,7 +442,7 @@ async function renderShortcutsPlusMenu() {
 
   const cards = entries.map(item => {
     const description = typeof item.desc === "string" ? item.desc : "A shortcut made for the Shortcuts app.";
-    const badge = typeof item.badge === "string" ? item.badge : "PERSONAL PROJECT";
+    const badge = "FEATURED";
     const categories = Array.isArray(item.category)
       ? item.category.filter(x => typeof x === "string").slice(0, 3)
       : [];
@@ -461,32 +461,33 @@ async function renderShortcutsPlusMenu() {
     '<meta name="color-scheme" content="light dark"><meta name="theme-color" content="#111318">',
     '<title>Shortcuts+ — Quick Look Showcase</title>',
     '<style>',
-    ':root{color-scheme:dark;--bg:#101217;--panel:#191d25;--panel2:#202631;--ink:#f4f6fb;--muted:#9ba5b5;--line:#303846;--accent:#a9c7ff;--accent2:#c6b7ff}',
-    '*{box-sizing:border-box}html{min-height:100%;background:var(--bg)}body{margin:0;background:radial-gradient(ellipse at 82% 5%,#26334b 0,transparent 38%),radial-gradient(ellipse at 8% 42%,#24213b 0,transparent 34%),var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}',
-    '.page{width:min(100% - 36px,700px);margin:0 auto;padding:25px 0 42px}.nav{display:flex;justify-content:space-between;align-items:center;padding:2px 0 26px;border-bottom:1px solid #ffffff18}',
-    '.brand{font-size:18px;font-weight:800;letter-spacing:-.06em;color:var(--ink);text-decoration:none}.brand span{color:var(--accent)}.nav-pill{font-size:10px;letter-spacing:.12em;font-weight:800;color:#c7d7f4;border:1px solid #ffffff26;border-radius:99px;padding:6px 10px}',
-    '.hero{padding:42px 0 27px}.eyebrow{display:flex;align-items:center;gap:9px;color:#b7c9e8;font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}.eyebrow:before{content:"";width:19px;height:1px;background:var(--accent)}',
-    'h1{font-size:clamp(40px,9vw,66px);line-height:.98;letter-spacing:-.075em;margin:15px 0 16px;font-weight:850}h1 em{font-style:normal;color:var(--accent)}.intro{max-width:510px;color:#b0bac9;font-size:15px;line-height:1.75;margin:0}',
-    '.preview{margin:9px 0 27px;padding:13px;border:1px solid #ffffff20;border-radius:22px;background:linear-gradient(145deg,#202938dd,#171b24f2);box-shadow:0 18px 55px #0005}',
-    '.preview-bar{display:flex;align-items:center;gap:6px;padding:2px 3px 12px;border-bottom:1px solid #ffffff17}.dot{width:7px;height:7px;border-radius:50%;background:#64748b}.preview-label{margin-left:7px;color:#9eabc0;font-size:10px;letter-spacing:.08em;font-weight:700}',
-    '.preview-content{padding:20px 7px 12px}.preview-kicker{font-size:9px;letter-spacing:.17em;color:#9eafd0;font-weight:800}.preview-title{font-size:24px;line-height:1.1;letter-spacing:-.055em;font-weight:800;margin:8px 0 7px}.preview-copy{font-size:12px;color:#aeb8c8;max-width:390px;margin:0;line-height:1.6}.preview-lines{display:flex;gap:7px;margin-top:17px}.preview-lines span{height:5px;border-radius:9px;background:#ffffff1c;display:block}.preview-lines span:first-child{width:34%}.preview-lines span:nth-child(2){width:19%;background:#9cbaff80}.preview-lines span:nth-child(3){width:12%}',
-    '.section-head{display:flex;justify-content:space-between;align-items:center;margin:0 0 12px}.section-label{font-size:10px;letter-spacing:.16em;font-weight:800;color:#a9b8d0}.count{font-size:11px;color:#8995a7}',
-    '.project-card{border:1px solid #ffffff20;border-radius:22px;padding:20px;background:linear-gradient(145deg,#222a37,#181d26);box-shadow:0 14px 38px #0003}.card-top{display:flex;align-items:center;gap:9px}.app-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:linear-gradient(145deg,#b8d0ff,#8e9fff);color:#111827;font-size:20px;font-weight:800}.badge{font-size:9px;letter-spacing:.1em;font-weight:800;color:#c9d9f5;background:#91b5ff19;border:1px solid #91b5ff3b;border-radius:99px;padding:5px 8px}.card-index{margin-left:auto;color:#758197;font-size:10px;font-variant-numeric:tabular-nums}',
-    '.project-card h2{font-size:27px;letter-spacing:-.06em;margin:17px 0 5px}.card-description{font-size:13px;color:#aeb8c8;line-height:1.65;margin:0;max-width:500px}.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:15px}.chip{font-size:10px;color:#c4d0e2;padding:5px 9px;border-radius:8px;background:#ffffff0b;border:1px solid #ffffff15}',
-    '.card-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #ffffff18;margin-top:19px;padding-top:15px}.card-note{font-size:8px;letter-spacing:.12em;color:#8391a6;font-weight:800}.project-link{color:#c4d7ff;text-decoration:none;font-size:12px;font-weight:800}.project-link span{padding-left:4px}',
-    '.quicklook{margin-top:24px;padding:18px 19px;border:1px solid #ffffff17;border-radius:18px;background:#ffffff08}.quicklook h3{font-size:14px;margin:0 0 6px;letter-spacing:-.02em}.quicklook p{font-size:12px;line-height:1.7;color:#aab5c5;margin:0}.quicklook strong{color:#e8eef9}',
-    'footer{display:flex;justify-content:space-between;gap:12px;margin-top:25px;padding-top:16px;border-top:1px solid #ffffff18;color:#788497;font-size:10px}.footer-mark{font-weight:800;letter-spacing:-.04em;color:#aab8cc}',
-    '@media(min-width:560px){.page{padding-top:34px}.hero{padding-top:55px}.preview{padding:17px}.preview-content{padding:25px 12px 16px}.project-card{padding:24px}}',
+    ':root{color-scheme:light;--bg:#f4f6f9;--panel:#fff;--panel2:#eef2f7;--ink:#172437;--muted:#617086;--line:#dce3ec;--accent:#245b9e;--accent2:#6d89ad}',
+    '*{box-sizing:border-box}html{min-height:100%;background:var(--bg)}body{margin:0;background:linear-gradient(180deg,#fff 0,#f4f6f9 440px);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}',
+    '.page{width:min(100% - 40px,760px);margin:0 auto;padding:28px 0 44px}.nav{display:flex;justify-content:space-between;align-items:center;padding:2px 0 22px;border-bottom:1px solid var(--line)}',
+    '.brand{font-size:19px;font-weight:750;letter-spacing:-.045em;color:var(--ink);text-decoration:none}.brand span{color:var(--accent)}.nav-pill{font-size:9px;letter-spacing:.12em;font-weight:750;color:#385b83;border:1px solid #d5dfeb;border-radius:4px;padding:6px 9px;background:#f7f9fc}',
+    '.hero{padding:46px 0 28px}.eyebrow{display:flex;align-items:center;gap:9px;color:#526a87;font-size:10px;font-weight:750;letter-spacing:.15em;text-transform:uppercase}.eyebrow:before{content:"";width:18px;height:2px;background:var(--accent)}',
+    'h1{font-size:clamp(39px,8vw,62px);line-height:1.02;letter-spacing:-.065em;margin:14px 0 15px;font-weight:780;color:#172437}h1 em{font-style:normal;color:var(--accent)}.intro{max-width:570px;color:#596a80;font-size:15px;line-height:1.75;margin:0}',
+    '.preview{margin:8px 0 30px;padding:15px;border:1px solid #dce3ec;border-radius:12px;background:#fff;box-shadow:0 8px 24px #24364b0b}',
+    '.preview-bar{display:flex;align-items:center;gap:6px;padding:2px 3px 12px;border-bottom:1px solid #e8edf3}.dot{width:7px;height:7px;border-radius:50%;background:#aab7c7}.preview-label{margin-left:7px;color:#6d7d91;font-size:9px;letter-spacing:.1em;font-weight:750}',
+    '.preview-content{padding:22px 8px 13px}.preview-kicker{font-size:9px;letter-spacing:.15em;color:#567397;font-weight:750}.preview-title{font-size:25px;line-height:1.15;letter-spacing:-.045em;color:#1b2b40;font-weight:750;margin:9px 0 7px}.preview-copy{font-size:12px;color:#65758a;max-width:420px;margin:0;line-height:1.7}.preview-lines{display:flex;gap:7px;margin-top:17px}.preview-lines span{height:5px;border-radius:4px;background:#e7ecf2;display:block}.preview-lines span:first-child{width:34%}.preview-lines span:nth-child(2){width:19%;background:#9bb4d2}.preview-lines span:nth-child(3){width:12%}',
+    '.section-head{display:flex;justify-content:space-between;align-items:center;margin:0 0 12px}.section-label{font-size:10px;letter-spacing:.15em;font-weight:750;color:#526781}.count{font-size:10px;color:#78879a}',
+    '.project-card{border:1px solid #dce3ec;border-radius:12px;padding:21px;background:#fff;box-shadow:0 5px 18px #24364b08}.card-top{display:flex;align-items:center;gap:9px}.app-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:8px;background:#eaf0f7;color:#285b91;font-size:19px;font-weight:750}.badge{font-size:9px;letter-spacing:.1em;font-weight:750;color:#365d86;background:#f1f5fa;border:1px solid #dce5ef;border-radius:4px;padding:5px 8px}.card-index{margin-left:auto;color:#8794a5;font-size:10px;font-variant-numeric:tabular-nums}',
+    '.project-card h2{font-size:26px;letter-spacing:-.05em;color:#1b2b40;margin:17px 0 5px}.card-description{font-size:13px;color:#637389;line-height:1.7;margin:0;max-width:540px}.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:15px}.chip{font-size:10px;color:#526781;padding:5px 9px;border-radius:5px;background:#f6f8fb;border:1px solid #e2e8f0}',
+    '.card-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #e8edf3;margin-top:19px;padding-top:15px}.card-note{font-size:8px;letter-spacing:.12em;color:#8794a5;font-weight:750}.project-link{color:#245b9e;text-decoration:none;font-size:12px;font-weight:750}.project-link span{padding-left:4px}',
+    '.quicklook{margin-top:24px;padding:18px 19px;border:1px solid #dce3ec;border-radius:10px;background:#eef2f7}.quicklook h3{font-size:14px;color:#1d3048;margin:0 0 6px;letter-spacing:-.02em}.quicklook p{font-size:12px;line-height:1.75;color:#5e6f84;margin:0}.quicklook strong{color:#263e5b}',
+    'footer{display:flex;justify-content:space-between;gap:12px;margin-top:26px;padding-top:16px;border-top:1px solid var(--line);color:#7b899a;font-size:9px;letter-spacing:.04em}.footer-mark{font-weight:800;letter-spacing:.02em;color:#536780}',
+    '@media(min-width:560px){.page{padding-top:36px}.hero{padding-top:54px}.preview{padding:18px}.preview-content{padding:26px 12px 16px}.project-card{padding:25px}}',
+
     '</style></head><body><main class="page">',
-    '<nav class="nav"><a class="brand" href="https://shortcuts.plus/">Shortcuts<span>+</span></a><span class="nav-pill">QUICK LOOK EDITION</span></nav>',
-    '<header class="hero"><div class="eyebrow">A personal shortcut collection</div><h1>Made for a<br><em>better view.</em></h1>',
-    '<p class="intro">A closer look at the shortcuts I build for Apple Shortcuts — presented as a clean, focused preview that feels at home on iPhone.</p></header>',
+    '<nav class="nav"><a class="brand" href="https://shortcuts.plus/">Shortcuts<span>+</span></a><span class="nav-pill">SHORTCUTS SHOWCASE</span></nav>',
+    '<header class="hero"><div class="eyebrow">Apple Shortcuts Showcase</div><h1>A clearer view of<br><em>Shortcuts.</em></h1>',
+    '<p class="intro">A curated presentation of utility-focused shortcuts for Apple devices, with concise project information and direct access to each shortcut.</p></header>',
     '<section class="preview" aria-label="Quick Look preview"><div class="preview-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="preview-label">SHORTCUTS+ / QUICK LOOK</span></div>',
-    '<div class="preview-content"><div class="preview-kicker">THE EXPERIENCE</div><div class="preview-title">Your shortcuts.<br>One clear view.</div><p class="preview-copy">A lightweight showcase designed to be read comfortably in the Shortcuts app’s Quick Look preview.</p><div class="preview-lines"><span></span><span></span><span></span></div></div></section>',
-    '<section aria-label="Featured shortcuts"><div class="section-head"><h2 class="section-label">FEATURED PROJECT</h2><span class="count">' + entries.length + ' PROJECT' + (entries.length === 1 ? '' : 'S') + '</span></div>',
+    '<div class="preview-content"><div class="preview-kicker">PLATFORM OVERVIEW</div><div class="preview-title">Shortcuts, presented<br>with clarity.</div><p class="preview-copy">A streamlined project index with clear descriptions, categories, and direct shortcut links.</p><div class="preview-lines"><span></span><span></span><span></span></div></div></section>',
+    '<section aria-label="Featured shortcuts"><div class="section-head"><h2 class="section-label">FEATURED SHORTCUTS</h2><span class="count">' + entries.length + ' ITEM' + (entries.length === 1 ? '' : 'S') + '</span></div>',
     '<div class="projects">' + cards + '</div></section>',
-    '<aside class="quicklook"><h3>Designed for Quick Look</h3><p>This page is intentionally <strong>static and self-contained</strong>: its layout and styling are included in the page, so it can be displayed as a polished preview without relying on page scripts or external design assets.</p></aside>',
-    '<footer><span>Personal projects · Apple Shortcuts</span><span class="footer-mark">SHORTCUTS+</span></footer>',
+    '<aside class="quicklook"><h3>Quick Look compatibility</h3><p>The showcase uses a <strong>self-contained static layout</strong>. Its structure and styling are included in the page, minimizing dependencies on external scripts and design assets when displayed in Quick Look.</p></aside>',
+    '<footer><span>APPLE SHORTCUTS · PROJECT DIRECTORY</span><span class="footer-mark">SHORTCUTS+</span></footer>',
     '</main></body></html>'
   ].join("\n");
 
