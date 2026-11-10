@@ -1,21 +1,21 @@
-# Shortcuts Plus Dynamic Page API
+# Shortcuts Plus Website API
 
 Cloudflare Worker base URL: `https://api.shortcuts.plus`
 
 ## Endpoints
 
-### 1. Load a webpage
+### 1. Get a webpage
 
 `GET /get-website?url=<URL-encoded-public-http-or-https-url>`
 
-Returns a JSON dictionary:
+This is the only webpage endpoint. It returns a JSON dictionary:
 
 - `file`: packaged HTML string to save as an `.html` file and preview with Quick Look.
-- `dynamic`: native Shortcuts interaction definitions extracted from links and GET forms.
-- `metadata`: title, source URL, asset counts, and generation time.
-- `instructions`: how to submit an action.
+- `dynamic`: preloaded native Shortcuts interaction definitions extracted from ordinary links and GET forms. These are data for Shortcuts to use; there is no separate action endpoint.
+- `metadata`: title, source URL, asset counts, cache information, and preloaded link information.
+- `instructions`: guidance for using the returned dynamic definitions.
 
-Example shape:
+Example response shape:
 
 ```json
 {
@@ -33,26 +33,18 @@ Example shape:
       ]
     }
   ],
-  "metadata": { "title": "Example", "source": "https://example.com/", "version": 1 }
+  "metadata": {
+    "title": "Example",
+    "source": "https://example.com/",
+    "version": 1,
+    "preloaded": [{ "id": "link_1", "label": "About" }]
+  }
 }
 ```
 
-### 2. Submit a native interaction
+To follow a link, have Shortcuts request `/get-website` again using that item's `target` as the URL parameter. For a GET form, collect the listed field values in Shortcuts, add them to the form's `target` as URL query parameters using each field's `name`, then request `/get-website` with the resulting URL. The API itself does not receive interaction selections or submit forms.
 
-`POST /action` with JSON:
-
-```json
-{
-  "url": "https://example.com/",
-  "actionId": "form_1",
-  "values": { "q": "hello world" }
-}
-```
-
-For a link, send its `link_N` id and omit `values`. For a form, send the `form_N` id and a `values` dictionary keyed by each field's HTML `name`. The Worker re-fetches the current page, validates that the action still exists, follows the selected link or submits the GET form, and returns the same JSON response shape for the next page. Same-origin linked pages may already be cached from background preloading, so selecting one can return much faster.
-
-
-### 3. Generate a vCard menu file
+### 2. Generate a vCard menu file
 
 `GET /vcf-menu?data=<URL-encoded-JSON>`
 
@@ -72,27 +64,28 @@ For Apple Shortcuts, use **URL Encode** on the JSON text, then append the result
 https://api.shortcuts.plus/vcf-menu?data=
 ```
 
-Use **Get Contents of URL** with method **GET**. No request body or headers are needed. The endpoint is GET-only; POST is not supported. Keep the JSON compact because URL length limits apply. Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order. Each property name is written to both the `FN` (formatted name) and `N` (name) properties; its value is written to `ORG` (company). Text properties use `CHARSET=UTF-8`. Each contact also gets a `NOTE` identifier (`item_1`, `item_2`, and so on) so Shortcuts can distinguish duplicate titles. Contacts are separated by a blank line. A valid 1×1 transparent PNG is embedded in the `PHOTO` property to suppress the default initials/monogram avatar in contact views that honor the photo; it is not a visible picture.
+Use **Get Contents of URL** with method **GET**. No request body or headers are needed. The endpoint is GET-only; POST is not supported. Keep the JSON compact because URL length limits apply. Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order.
 
 ## Suggested Apple Shortcuts flow
 
 1. Ask for or receive the starting URL.
-2. Use **Get Contents of URL** with `/get-website?url=` plus the URL-encoded starting URL.
-3. Use **Get Dictionary from Input** on the response.
-4. Get the `file` value, save it with an `.html` extension, and use **Quick Look** to preview it.
-5. Get the `dynamic` array. Use **Choose from List** with the item labels.
-6. Branch on the chosen item's `type`:
-   - `link`: submit its `id` to `POST /action`.
-   - `form`: ask for each listed field using native Shortcuts actions, build a `values` dictionary, then submit.
-7. Parse the returned dictionary and repeat from step 4.
+2. Use **URL Encode** on the URL.
+3. Use **Get Contents of URL** with `https://api.shortcuts.plus/get-website?url=` followed by the encoded URL.
+4. Use **Get Dictionary from Input** on the response.
+5. Get the `file` value, save it with an `.html` extension, and use **Quick Look** to preview it.
+6. Get the `dynamic` array and use **Choose from List** with the item labels.
+7. When a link is chosen, use its `target` to call `/get-website` again. For a GET form, ask for the listed field values, build the target URL with those values as query parameters, and call `/get-website` again.
+8. Repeat the display and selection steps for the returned page.
 
-Shortcuts does not receive a callback from Quick Look when an HTML element is tapped. Native menus and prompts are the interaction surface; Quick Look is the display surface.
+Shortcuts handles choices and form prompts natively. Quick Look is only the display surface: it does not send a callback when an HTML element is tapped.
 
-## Packaging behavior and limitations
+## Preloading and packaging behavior
 
-The packager inlines linked stylesheets, nested CSS imports (limited depth), external classic script files, and rewrites CSS URLs to absolute URLs. It injects a base URL so remaining relative resources can resolve.
+The Worker packages the requested page and preloads up to four unique same-origin links in the background. Those pages are cached opportunistically, so a later `/get-website` request for one of them may be faster. The `dynamic` array is also included in the initial response so Shortcuts can build its menus and prompts without first making another request to discover the links and form fields. Preloading is limited; it does not recursively crawl the entire site.
 
-It does not execute JavaScript or render the page in Chromium. Preloading is deliberately limited to four same-origin links per page; it does not recursively crawl the whole site. Cache entries are opportunistic and may not be shared between Cloudflare data centers. It cannot reliably discover actions implemented only by JavaScript, buttons with no ordinary link/form behavior, dynamically created controls, or forms using POST. The interaction extractor currently exposes ordinary links and GET forms only. Some sites may require cookies, authentication, anti-bot challenges, or browser execution and therefore may not work.
+The packager inlines linked stylesheets, nested CSS imports (limited depth), and external classic script files, and rewrites CSS URLs to absolute URLs. It injects a base URL so remaining relative resources can resolve.
+
+It does not execute JavaScript or render the page in Chromium. It cannot reliably discover actions implemented only by JavaScript, buttons with no ordinary link/form behavior, dynamically created controls, or forms using POST. The interaction extractor exposes ordinary links and GET forms only. Some sites may require cookies, authentication, anti-bot challenges, or browser execution and therefore may not work.
 
 The Worker accepts only public HTTP/HTTPS destinations, blocks local/private/reserved hosts, validates redirects, and does not forward user cookies or credentials. HTML is limited to 2 MB; each fetched CSS/JS resource to 1 MB; aggregate CSS/JS to 4 MB; and no more than 24 external CSS/JS resources are fetched. Images, fonts, video, and other binary media remain external.
 
