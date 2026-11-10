@@ -414,6 +414,77 @@ function escapeHtml(value) {
   })[char]);
 }
 
+async function renderRegistryPage(env) {
+  const request = new Request("https://s.shortcuts.plus/all", {
+    headers: { accept: "application/json" }
+  });
+  // Same-zone routed Workers communicate through the existing service binding.
+  const response = env.REGISTRY ? await env.REGISTRY.fetch(request) : await fetch(request);
+  if (!response.ok) throw new Error("The shortcut registry returned HTTP " + response.status + ".");
+  if (!/application\/json/i.test(response.headers.get("content-type") || "")) {
+    throw new Error("The shortcut registry did not return JSON.");
+  }
+  if (Number(response.headers.get("content-length")) > MAX_ASSET_BYTES) {
+    throw new Error("The shortcut catalog exceeds the 1 MB limit.");
+  }
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("The shortcut registry returned an empty response.");
+  const chunks = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_ASSET_BYTES) {
+        await reader.cancel();
+        throw new Error("The shortcut catalog exceeds the 1 MB limit.");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  let data;
+  try { data = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)); }
+  catch { throw new Error("The shortcut registry returned invalid JSON."); }
+  if (data?.success !== true || !Array.isArray(data.shortcuts)) {
+    throw new Error("The shortcut registry did not return a shortcut list.");
+  }
+  const entries = data.shortcuts.flatMap(item => {
+    if (!item || typeof item.shortcut !== "string" || !item.shortcut.trim() ||
+        typeof item.name !== "string" || !item.name.trim()) return [];
+    let safeLink = "https://shortcuts.plus/full.html?shortcut=" + encodeURIComponent(item.shortcut);
+    let downloadable = false;
+    try {
+      const url = new URL(item.download);
+      if (url.protocol === "https:" && !url.username && !url.password) {
+        safeLink = url.href;
+        downloadable = true;
+      }
+    } catch {}
+    return [{
+      title: item.name,
+      desc: typeof item.description === "string" ? item.description : "",
+      version: typeof item.version === "string" ? item.version : "",
+      category: item.category,
+      safeLink,
+      downloadable
+    }];
+  });
+  const html = renderShortcutCollection(entries, true);
+  if (new TextEncoder().encode(html).byteLength > MAX_HTML_BYTES) {
+    throw new Error("The static shortcut view exceeds the 2 MB HTML limit.");
+  }
+  return html;
+}
+
 async function renderShortcutsPlusPage(env) {
   const dataUrl = "https://shortcuts.plus/data/shortcuts.json";
   const context = makeContext();
@@ -448,7 +519,7 @@ async function renderShortcutsPlusPage(env) {
           const data = await response.json();
           if (response.ok && data.success) resolved = {
             ...item, title: data.name || item.title,
-            desc: data.description || item.desc, link: data.download || item.link
+            desc: data.description || item.desc, link: data.download || item.link, version: data.version || item.version
           };
         } catch {
           // Keep the catalog entry visible even if the registry is unavailable.
@@ -468,12 +539,17 @@ async function renderShortcutsPlusPage(env) {
     entries.push(...batch.filter(Boolean));
   }
 
+  return renderShortcutCollection(entries);
+}
+
+function renderShortcutCollection(entries, webPortal = false) {
   const cards = entries.map((item, index) => {
     const categories = Array.isArray(item.category) ? item.category.filter(x => typeof x === "string") : [];
     return '<article class="project-card"><div class="card-top"><span class="app-icon" aria-hidden="true">✦</span><span class="card-index">' +
       String(index + 1).padStart(2, "0") + '</span></div><h2>' + escapeHtml(item.title) +
       '</h2><p class="card-description">' + escapeHtml(item.desc || "A shortcut made for the Shortcuts app.") +
-      '</p><div class="chips">' + categories.map(value => '<span class="chip">' + escapeHtml(value) + '</span>').join("") +
+      '</p>' + (item.version ? '<p class="card-version">Version ' + escapeHtml(item.version) + '</p>' : '') +
+      '<div class="chips">' + categories.map(value => '<span class="chip">' + escapeHtml(value) + '</span>').join("") +
       '</div><a class="project-link" aria-label="' + escapeHtml(item.title) + '" href="' + escapeHtml(item.safeLink) + '">' +
       (item.downloadable ? 'Get shortcut' : 'View details') + ' <span aria-hidden="true">↗</span></a></article>';
   }).join("");
@@ -487,14 +563,15 @@ async function renderShortcutsPlusPage(env) {
     '*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--accent)}a:focus-visible{outline:3px solid var(--accent);outline-offset:5px}',
     '.page{width:min(1024px,100% - 48px);margin:auto}.nav{display:flex;align-items:center;justify-content:space-between;min-height:64px;border-bottom:1px solid var(--line)}.brand{color:var(--ink);font-size:21px;font-weight:600;text-decoration:none;letter-spacing:-.8px}.brand span{color:var(--accent)}.nav-label{font-size:12px;color:var(--muted)}',
     '.hero{text-align:center;padding:88px 0 72px}.eyebrow{margin:0 0 18px;font-size:14px;font-weight:600;color:var(--muted)}h1{margin:0;font-size:clamp(44px,8vw,80px);line-height:1.05;letter-spacing:-.055em;font-weight:700}h1 span{color:var(--muted)}.intro{max-width:540px;margin:24px auto 0;font-size:21px;line-height:1.45;color:var(--muted)}',
+    '.card-version{font-size:14px;color:var(--muted);margin:0 0 16px}.empty{color:var(--muted)}',
     '.section-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin:0 0 24px}.section-head h2{font-size:28px;letter-spacing:-1px;margin:0}.count{color:var(--muted);font-size:13px}.projects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}',
     '.project-card{min-width:0;background:var(--panel);border-radius:28px;padding:32px;display:flex;flex-direction:column;align-items:flex-start}.card-top{display:flex;align-items:center;justify-content:space-between;width:100%}.app-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:15px;background:var(--accent);color:white;font-size:28px}.card-index{font-size:12px;color:var(--muted)}.project-card h2{font-size:28px;letter-spacing:-1px;line-height:1.2;margin:24px 0 12px;overflow-wrap:anywhere}.card-description{color:var(--muted);margin:0 0 20px;overflow-wrap:anywhere}.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}.chip{color:var(--muted);font-size:12px}.chip+.chip:before{content:"·";margin-right:8px}.project-link{display:inline-block;margin-top:auto;border-radius:999px;padding:10px 19px;background:var(--accent);color:white;text-decoration:none;font-size:14px}',
     'footer{margin-top:72px;padding:24px 0 32px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}@media(max-width:600px){.page{width:calc(100% - 32px)}.hero{padding:60px 0 48px}.intro{font-size:19px}.projects{grid-template-columns:1fr;gap:16px}.project-card{padding:26px}.section-head h2{font-size:24px}}',
     '@media(prefers-color-scheme:dark){:root{--bg:#000;--panel:#1c1c1e;--ink:#f5f5f7;--muted:#a1a1a6;--accent:#2997ff;--line:#424245}.project-link{background:#0071e3}}',
     '</style></head><body><main class="page">',
-    '<nav class="nav"><a class="brand" href="https://shortcuts.plus/">Shortcuts<span>+</span></a><span class="nav-label">Made for Apple Shortcuts</span></nav>',
+    '<nav class="nav"><a class="brand" href="https://shortcuts.plus/">Shortcuts<span>+</span></a><span class="nav-label">' + (webPortal ? 'WebPortal+ · Static view' : 'Made for Apple Shortcuts') + '</span></nav>',
     '<header class="hero"><p class="eyebrow">Shortcuts+</p><h1>Small shortcuts.<br><span>More possibilities.</span></h1><p class="intro">Thoughtful tools for the things you do every day. Built for Apple Shortcuts.</p></header>',
-    '<section aria-label="All shortcuts"><div class="section-head"><h2>Explore the collection.</h2><span class="count">' + entries.length + ' shortcut' + (entries.length === 1 ? '' : 's') + '</span></div><div class="projects">' + cards + '</div></section>',
+    '<section aria-label="All shortcuts"><div class="section-head"><h2>Explore the collection.</h2><span class="count">' + entries.length + ' shortcut' + (entries.length === 1 ? '' : 's') + '</span></div><div class="projects">' + (cards || '<p class="empty">No shortcuts are published yet.</p>') + '</div></section>',
     '<footer>Shortcuts+ is independent and is not affiliated with Apple Inc. Review a shortcut’s actions and permissions before running it.</footer>',
     '</main></body></html>'
   ].join("\n");
@@ -642,6 +719,12 @@ function htmlFileResponse(html) {
 
 async function buildPage(url, env) {
   const target = validateTarget(url).href;
+  const requested = new URL(target);
+  // The registry is JSON, so render it before the generic HTML-only fetch path.
+  // Fetch each snapshot fresh; installed versions must not come from page cache.
+  if (requested.hostname === "s.shortcuts.plus" && /^\/all\/?$/.test(requested.pathname)) {
+    return renderRegistryPage(env);
+  }
   const cache = caches.default;
   const key = pageCacheKey(target);
   const cached = await cache.match(key);

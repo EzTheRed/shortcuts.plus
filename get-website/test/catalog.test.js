@@ -151,3 +151,88 @@ test('resolves downloads through the registry service binding instead of a block
   assert.equal(registryCalls, 1);
   assert.deepEqual(globalCalls, ['https://shortcuts.plus/', 'https://shortcuts.plus/data/shortcuts.json']);
 });
+
+test('WebPortal+ packages the registry JSON as a self-contained HTML file through its service binding', async () => {
+  const records = Array.from({ length: 75 }, (_, i) => ({
+    shortcut: `shortcut-${i}`, name: `Shortcut ${i}`, version: '2.1',
+    description: 'Install this shortcut.', category: ['Utilities'],
+    download: `https://www.icloud.com/shortcuts/${i}`
+  }));
+  let calls = 0;
+  const request = createWorker(async () => assert.fail('The registry must not use public same-zone fetch or the website catalog'), {
+    REGISTRY: { fetch: async request => {
+      calls++;
+      assert.equal(request.url, 'https://s.shortcuts.plus/all');
+      assert.equal(request.method, 'GET');
+      assert.equal(request.headers.get('accept'), 'application/json');
+      assert.equal(request.headers.get('authorization'), null);
+      return Response.json({ success: true, shortcuts: records });
+    } }
+  });
+  const response = await request('https://s.shortcuts.plus/all');
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-type'), 'text/html; charset=utf-8');
+  assert.equal(response.headers.get('content-disposition'), 'attachment; filename="webpage.html"');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  const html = await response.text();
+  assert.match(html, /^<!doctype html>/i);
+  assert.equal((html.match(/class="project-card"/g) || []).length, 75);
+  assert.ok(html.includes('WebPortal+ · Static view'));
+  assert.ok(html.includes('Version 2.1'));
+  assert.ok(html.includes('href="https://www.icloud.com/shortcuts/74"'));
+  assert.ok(!/<script\b|<link\b|<img\b/i.test(html), 'The file must display without JavaScript or external resources');
+  assert.equal(calls, 1);
+});
+
+test('registry snapshots stay fresh and require authentication even after a successful request', async () => {
+  let calls = 0;
+  const request = createWorker(async () => assert.fail('Unexpected public fetch'), {
+    REGISTRY: { fetch: async () => Response.json({ success: true, shortcuts: [{
+      shortcut: 'webportal-plus', name: 'WebPortal+', version: String(++calls)
+    }] }) }
+  });
+  const first = await request('https://s.shortcuts.plus/all');
+  assert.ok((await first.text()).includes('Version 1'));
+  const second = await request('https://s.shortcuts.plus/all');
+  assert.ok((await second.text()).includes('Version 2'));
+  assert.equal(calls, 2);
+  const unauthorized = await request('https://s.shortcuts.plus/all', { authorization: null });
+  assert.equal(unauthorized.status, 401);
+  assert.equal(calls, 2);
+});
+
+test('static registry cards escape text, reject unsafe links, and handle an empty collection', async () => {
+  let records = [{ shortcut: 'unsafe', name: '<img onerror="bad()">', description: '<script>bad()</script>', version: '<unsafe>', download: 'javascript:alert(1)' }, null];
+  const request = createWorker(async () => assert.fail('Unexpected public fetch'), {
+    REGISTRY: { fetch: async () => Response.json({ success: true, shortcuts: records }) }
+  });
+  const response = await request('https://s.shortcuts.plus/all/');
+  const html = await response.text();
+  assert.equal(response.status, 200);
+  assert.equal((html.match(/class="project-card"/g) || []).length, 1);
+  assert.ok(html.includes('&lt;img'));
+  assert.ok(html.includes('Version &lt;unsafe&gt;'));
+  assert.ok(html.includes('href="https://shortcuts.plus/full.html?shortcut=unsafe"'));
+  assert.ok(!/href="javascript:|<script|<img/.test(html));
+  records = [];
+  const empty = await request('https://s.shortcuts.plus/all');
+  assert.ok((await empty.text()).includes('No shortcuts are published yet.'));
+});
+
+test('registry failures and invalid or oversized responses remain JSON errors, never broken HTML files', async () => {
+  const responses = [
+    () => new Response('Unavailable', { status: 503 }),
+    () => new Response('<html>Error</html>', { headers: { 'content-type': 'text/html' } }),
+    () => new Response('{', { headers: { 'content-type': 'application/json' } }),
+    () => Response.json({ success: true, shortcuts: {} }),
+    () => new Response(' '.repeat(1024 * 1024 + 1), { headers: { 'content-type': 'application/json' } })
+  ];
+  for (const response of responses) {
+    const request = createWorker(async () => assert.fail('Unexpected public fetch'), { REGISTRY: { fetch: async () => response() } });
+    const result = await request('https://s.shortcuts.plus/all');
+    assert.equal(result.status, 400);
+    assert.match(result.headers.get('content-type'), /^application\/json/);
+    assert.ok((await result.json()).error);
+    assert.equal(result.headers.get('content-disposition'), null);
+  }
+});

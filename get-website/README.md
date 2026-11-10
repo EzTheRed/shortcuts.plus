@@ -193,6 +193,28 @@ Quick Look displays the HTML file. The Worker does not provide native
 interaction menus or callbacks from the preview. To package another URL, obtain
 a fresh token and repeat the request with that URL.
 
+### Open the shortcut collection in WebPortal+
+
+Use `https://s.shortcuts.plus/all` as the URL in WebPortal+'s existing static
+file viewer. The `POST /get-website` request body is:
+
+```json
+{ "url": "https://s.shortcuts.plus/all" }
+```
+
+Use the same fresh `get-website` Basic token and HTML-file handling described
+above. The viewer receives a self-contained `webpage.html` with every active
+shortcut's name, description, version, categories, and install link. CSS is
+embedded and the view needs no JavaScript or external assets to display. Open
+the returned HTML file directly in Quick Look; do not parse it as JSON.
+
+Each request reads the latest catalog through the existing `REGISTRY` service
+binding. This static snapshot bypasses the general webpage cache. The direct
+`GET https://s.shortcuts.plus/all` API continues to return JSON. Empty catalogs
+show an empty state; registry errors retain the API's JSON error response.
+Catalog input is limited to 1 MB and generated HTML to 2 MB, without silently
+truncating shortcuts.
+
 ## Packaging behavior
 
 The Worker packages only the requested page and its linked CSS/JavaScript
