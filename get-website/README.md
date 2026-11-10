@@ -64,7 +64,7 @@ For Apple Shortcuts, use **URL Encode** on the JSON text, then append the result
 https://api.shortcuts.plus/vcf-menu?data=
 ```
 
-Use **Get Contents of URL** with method **GET**. No request body or headers are needed. The endpoint is GET-only; POST is not supported. Keep the JSON compact because URL length limits apply. Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order.
+Use **Get Contents of URL** with method **GET** and include the API's Basic token in the `Authorization` header. No request body is needed. The endpoint is GET-only; POST is not supported. Keep the JSON compact because URL length limits apply. Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order.
 
 ## Authentication
 
