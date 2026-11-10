@@ -321,7 +321,7 @@ function extractDynamic(html, pageUrl) {
     n++;
     add({
       id: "link_" + n,
-      label: labelText(m[2], "Open link " + n),
+      label: attr(m[1], "aria-label") || labelText(m[2], "Open link " + n),
       type: "link",
       method: "GET",
       target: href
@@ -405,9 +405,80 @@ function pageTitle(html) {
 }
 
 function pageCacheKey(url) {
-  const key = new URL("https://api.shortcuts.plus/__page-cache");
+  const key = new URL("https://api.shortcuts.plus/__page-cache-v2");
   key.searchParams.set("url", validateTarget(url).href);
   return new Request(key.href, { method: "GET" });
+}
+
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[char]);
+}
+
+async function renderShortcutsPlusMenu() {
+  const dataUrl = "https://shortcuts.plus/data/shortcuts.json";
+  const context = makeContext();
+  const fetched = await fetchResource(dataUrl, context, "js");
+  if (!/json/i.test(fetched.contentType)) throw new Error("The shortcuts data endpoint did not return JSON.");
+
+  let records;
+  try { records = JSON.parse(fetched.text); }
+  catch { throw new Error("The shortcuts data file contains invalid JSON."); }
+  if (!Array.isArray(records)) throw new Error("The shortcuts data file must contain an array.");
+
+  const entries = records.slice(0, 60).filter(item =>
+    item && typeof item.title === "string" && typeof item.link === "string"
+  ).map(item => {
+    let safeLink = "";
+    try {
+      const parsed = new URL(item.link);
+      if (parsed.protocol === "https:" && !parsed.username && !parsed.password) safeLink = parsed.href;
+    } catch {}
+    return { ...item, safeLink };
+  }).filter(item => item.safeLink);
+
+  const rows = entries.map(item => {
+    const categories = Array.isArray(item.category)
+      ? item.category.filter(x => typeof x === "string").slice(0, 4).join(" · ")
+      : "";
+    const badge = typeof item.badge === "string" ? item.badge : "";
+    const description = typeof item.desc === "string" ? item.desc : "";
+    return '<li class="item"><a class="entry" href="' + escapeHtml(item.safeLink) +
+      '" aria-label="' + escapeHtml(item.title) + '"><span class="main"><strong>' +
+      escapeHtml(item.title) + '</strong>' + (badge ? '<span class="badge">' + escapeHtml(badge) + '</span>' : '') +
+      '</span>' + (description ? '<span class="description">' + escapeHtml(description) + '</span>' : '') +
+      (categories ? '<span class="categories">' + escapeHtml(categories) + '</span>' : '') +
+      '<span class="open">Open shortcut <span aria-hidden="true">›</span></span></a></li>';
+  }).join("\n");
+
+  const html = [
+    '<!doctype html><html lang="en"><head><meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<meta name="color-scheme" content="light dark"><title>Shortcuts Plus — All Shortcuts</title>',
+    '<style>',
+    ':root{color-scheme:light dark;--bg:#f3f4f8;--panel:#fff;--ink:#171923;--muted:#687080;--line:#e6e8ef;--accent:#6557d9;--soft:#efedff}',
+    '@media(prefers-color-scheme:dark){:root{--bg:#111218;--panel:#1d202a;--ink:#f4f5fa;--muted:#a7adbd;--line:#303442;--accent:#b8afff;--soft:#302c4e}}',
+    '*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}',
+    '.wrap{width:min(100% - 28px,680px);margin:0 auto;padding:30px 0 48px}header{padding:10px 4px 22px}',
+    '.eyebrow{font-size:12px;font-weight:750;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}',
+    'h1{font-size:32px;line-height:1.1;letter-spacing:-.04em;margin:8px 0}.sub{color:var(--muted);margin:0}',
+    '.count{display:inline-flex;margin-top:14px;padding:6px 11px;border-radius:999px;background:var(--soft);color:var(--accent);font-size:13px;font-weight:700}',
+    '.menu{list-style:none;padding:0;margin:0;background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden}',
+    '.item+.item{border-top:1px solid var(--line)}.entry{display:block;padding:16px 17px;color:inherit;text-decoration:none}',
+    '.entry:active{background:var(--soft)}.main{display:flex;align-items:center;gap:9px;flex-wrap:wrap}',
+    'strong{font-size:17px;letter-spacing:-.01em}.badge{font-size:11px;font-weight:700;color:var(--accent);background:var(--soft);padding:3px 8px;border-radius:999px}',
+    '.description{display:block;color:var(--muted);font-size:14px;margin-top:5px}.categories{display:block;color:var(--muted);font-size:11px;margin-top:8px}',
+    '.open{display:flex;justify-content:space-between;align-items:center;color:var(--accent);font-size:13px;font-weight:700;margin-top:10px}',
+    'footer{padding:18px 4px 0;color:var(--muted);font-size:12px}</style></head><body><main class="wrap">',
+    '<header><div class="eyebrow">Shortcuts Plus</div><h1>All shortcuts</h1>',
+    '<p class="sub">Browse the complete collection in one simple menu.</p><span class="count">' + entries.length + ' shortcuts</span></header>',
+    '<ul class="menu">' + rows + '</ul><footer>Choose an item to open its shortcut or source page.</footer>',
+    '</main></body></html>'
+  ].join("\n");
+
+  return { html, count: entries.length, dataUrl };
 }
 
 async function buildPage(url, executionCtx = null, shouldPreload = true) {
@@ -422,6 +493,32 @@ async function buildPage(url, executionCtx = null, shouldPreload = true) {
   }
 
   const fetched = await fetchPage(validateTarget(target));
+  const final = new URL(fetched.finalUrl);
+  const isShortcutsPlusHome =
+    (final.hostname.toLowerCase() === "shortcuts.plus" || final.hostname.toLowerCase() === "www.shortcuts.plus") &&
+    final.pathname === "/" && !final.search;
+
+  if (isShortcutsPlusHome) {
+    const menu = await renderShortcutsPlusMenu();
+    const dynamic = extractDynamic(menu.html, fetched.finalUrl);
+    const result = responseDictionary(menu.html, dynamic, {
+      title: "Shortcuts Plus — All Shortcuts",
+      source: fetched.finalUrl,
+      finalUrl: fetched.finalUrl,
+      renderer: "shortcuts-plus-menu",
+      shortcutCount: menu.count,
+      dataSource: menu.dataUrl,
+      inlinedAssets: 0,
+      skippedAssets: [],
+      cacheHit: false,
+      preloaded: []
+    });
+    await cache.put(key, new Response(JSON.stringify(result), {
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=180" }
+    }));
+    return result;
+  }
+
   const packaged = await packageHtml(fetched.html, fetched.finalUrl);
   const dynamic = extractDynamic(fetched.html, fetched.finalUrl);
   const preloadCandidates = [];
