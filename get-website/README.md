@@ -52,18 +52,19 @@ Example shape:
 For a link, send its `link_N` id and omit `values`. For a form, send the `form_N` id and a `values` dictionary keyed by each field's HTML `name`. The Worker re-fetches the current page, validates that the action still exists, follows the selected link or submits the GET form, and returns the same JSON response shape for the next page. Same-origin linked pages may already be cached from background preloading, so selecting one can return much faster.
 
 
-### 3. Generate a text-only vCard menu file
+### 3. Generate a vCard menu file
 
-`POST /get-vcf` with a JSON array:
+`POST /get-vcf` with a JSON object. Each property name becomes a contact title, and its string value becomes the subtitle:
 
 ```json
-[
-  { "title": "Menu item 1", "subtitle": "Description of item 1." },
-  { "title": "Menu item 2", "subtitle": "A menu item." }
-]
+{
+  "title": "description",
+  "Item 1": "An item.",
+  "Item 2": "Another item."
+}
 ```
 
-Returns a downloadable `shortcuts-menu.vcf` file. Each object becomes one vCard contact: `title` is written to both the `FN` (formatted name) and `N` (name) properties, and `subtitle` is written to `ORG` (company). These text properties use the `CHARSET=UTF-8` parameter. Each card also gets a unique `NOTE` identifier (`item_1`, `item_2`, and so on) so Shortcuts can distinguish duplicate titles and subtitles after selection. The output is text-only and does not include a `PHOTO` property, image URLs, or embedded image data. Send the array as the raw JSON request body with `Content-Type: application/json`.
+Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order. Each property name is written to both the `FN` (formatted name) and `N` (name) properties; its value is written to `ORG` (company). Text properties use `CHARSET=UTF-8`. Each contact also gets a `NOTE` identifier (`item_1`, `item_2`, and so on) so Shortcuts can distinguish duplicate titles. Contacts are separated by a blank line. No `PHOTO` property or image data is included; a placeholder PHOTO value would not be a valid image. Send the object as the raw JSON request body with `Content-Type: application/json`.
 
 ## Suggested Apple Shortcuts flow
 
