@@ -1,8 +1,26 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "shortcuts-get-website",
+  "account_id": "0e819bfcac28eb577c6ef2a65aca6efc",
   "main": "src/index.js",
   "compatibility_date": "2026-11-09",
+  "routes": [
+    { "pattern": "api.shortcuts.plus", "custom_domain": true }
+  ],
+  "d1_databases": [
+    {
+      "binding": "AUTH_DB",
+      "database_name": "shortcuts-auth-audit",
+      "database_id": "df9f3edf-6f02-4c7a-ad0e-66dd423a5a30"
+    }
+  ],
+  "ai": { "binding": "AI" },
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "logs": { "enabled": true, "head_sampling_rate": 0.1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01, "persist": false }
+  },
   "services": [
     { "binding": "REGISTRY", "service": "shortcuts-registry" }
   ]

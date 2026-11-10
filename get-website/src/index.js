@@ -5,7 +5,39 @@ const MAX_TOTAL_ASSET_BYTES = 4 * 1024 * 1024;
 const MAX_ASSETS = 24;
 const MAX_REDIRECTS = 5;
 const TRANSPARENT_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=";
-const API_IDS = Object.freeze({ GET_WEBSITE: "get-website", VCF_MENU: "vcf-menu" });
+const API_IDS = Object.freeze({ GET_WEBSITE: "get-website", VCF_MENU: "vcf-menu", AI: "ai" });
+const AI_MODEL = "@cf/google/gemma-4-26b-a4b-it";
+const MAX_AI_PROMPT_CHARACTERS = 250;
+const MAX_AI_BODY_BYTES = 4096;
+const AI_RESPONSE_SCHEMA = {
+  type: "array",
+  minItems: 1,
+  maxItems: 16,
+  items: {
+    type: "object",
+    properties: {
+      type: { type: "string", enum: ["text"] },
+      contents: { type: "string", minLength: 1 }
+    },
+    required: ["type", "contents"],
+    additionalProperties: false
+  }
+};
+const AI_SYSTEM_PROMPT = [
+  "You are Shortcuts Plus AI, a helpful general-purpose assistant for Apple Shortcuts users.",
+  "Answer language, programming, and everyday questions; tell jokes when requested.",
+  "Be accurate, concise, and direct. Use the user's language. Give enough detail to be useful and keep code examples small.",
+  "You have no conversation history, browsing tools, or live website access. Do not claim to open URLs or execute code. Be honest about uncertainty.",
+  "Known information: shortcuts.plus is an Apple Shortcuts-oriented website offering a shortcut library and APIs that extend what the Shortcuts app can do.",
+  "Its APIs include webpage packaging, vCard menu generation, and this stateless text AI endpoint.",
+  "The documented API routes are POST /auth, /get-website, /vcf-menu, and /ai at https://api.shortcuts.plus. Do not invent endpoints.",
+  "Return only the required JSON array in reading order. Each item must have exactly type and contents, both strings.",
+  "type is the content category. This model generates only text, so every item's type must be text. contents holds the answer text, with line breaks preserved.",
+  "Ordinary answers usually need one text item. Programming examples are also text; keep explanations and examples in reading order.",
+  "Keep each complete code example in a single text item, preserving its line breaks.",
+  "You cannot generate images or audio; explain such limitations in a text item.",
+  "Do not wrap the array in Markdown or add extra keys. Keep the complete array concise enough to finish within 512 output tokens."
+].join(" ");
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
@@ -19,6 +51,97 @@ function json(data, status = 200) {
       "x-content-type-options": "nosniff"
     }
   });
+}
+
+// Bound the actual stream, including requests without a Content-Length header.
+async function readAiBody(request) {
+  if (Number(request.headers.get("content-length")) > MAX_AI_BODY_BYTES) {
+    throw new RangeError("Request body is too large.");
+  }
+  const reader = request.body?.getReader();
+  if (!reader) return JSON.parse("");
+  const chunks = [];
+  let bytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > MAX_AI_BODY_BYTES) {
+        await reader.cancel();
+        throw new RangeError("Request body is too large.");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const body = new Uint8Array(bytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
+}
+
+async function aiResponse(request, env) {
+  if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
+    return json({ error: "Use Content-Type: application/json with JSON { prompt: <text> }." }, 415);
+  }
+  let body;
+  try { body = await readAiBody(request); }
+  catch (error) {
+    return json({ error: error instanceof RangeError ? "The JSON request body is too large." : "Request body must be valid UTF-8 JSON." }, error instanceof RangeError ? 413 : 400);
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body) ||
+      Object.keys(body).length !== 1 || typeof body.prompt !== "string") {
+    return json({ error: "Send a JSON object containing only the string field prompt." }, 400);
+  }
+  const prompt = body.prompt.trim();
+  if (!prompt || [...prompt].length > MAX_AI_PROMPT_CHARACTERS) {
+    return json({ error: "prompt must contain 1 to 250 characters after trimming whitespace." }, 400);
+  }
+  if (!env.AI) return json({ error: "AI is temporarily unavailable." }, 503);
+  try {
+    const result = await env.AI.run(AI_MODEL, {
+      messages: [
+        { role: "system", content: AI_SYSTEM_PROMPT },
+        { role: "user", content: prompt }
+      ],
+      max_completion_tokens: 512,
+      temperature: 0.7,
+      stream: false,
+      store: false,
+      chat_template_kwargs: { enable_thinking: false },
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "answer_blocks", strict: true, schema: AI_RESPONSE_SCHEMA }
+      }
+    });
+    const answer = result?.choices?.[0]?.message?.content;
+    if (typeof answer !== "string" || !answer.trim()) throw new Error("Empty AI response");
+    if (result.choices[0].finish_reason === "length") throw new Error("AI response exceeded output budget");
+    const blocks = JSON.parse(answer);
+    if (!Array.isArray(blocks) || blocks.length < 1 || blocks.length > 16) throw new Error("Invalid AI response array");
+    for (const block of blocks) {
+      if (!block || typeof block !== "object" || Array.isArray(block) || Object.keys(block).length !== 2 ||
+          !Object.hasOwn(block, "type") || !Object.hasOwn(block, "contents") ||
+          block.type !== "text" || typeof block.contents !== "string" || !block.contents.trim()) {
+        throw new Error("Invalid AI response item");
+      }
+    }
+    // Return only validated items in reading order; preserve contents exactly.
+    return json(blocks);
+  } catch (error) {
+    const dailyLimit = Number(error?.code) === 3036 || /\b3036\b/.test(String(error?.message));
+    const limited = dailyLimit || Number(error?.status) === 429 || Number(error?.statusCode) === 429 || /\b429\b/.test(String(error?.message));
+    // Never log prompts, answers, tokens, or upstream errors that may contain input.
+    console.error(JSON.stringify({ event: "ai_request_failed", reason: dailyLimit ? "free_allowance" : limited ? "rate_limit" : "upstream_unavailable" }));
+    const response = json({ error: limited ? "The free AI allowance or rate limit has been reached. Try again later." : "AI is temporarily unavailable. Try again later." }, limited ? 429 : 503);
+    if (limited) response.headers.set("retry-after", String(dailyLimit ? 86400 - Math.floor(Date.now() / 1000) % 86400 : 60));
+    return response;
+  }
 }
 
 
@@ -643,7 +766,8 @@ export default {
       const directory = [
         "POST https://api.shortcuts.plus/auth",
         "POST https://api.shortcuts.plus/get-website",
-        "POST https://api.shortcuts.plus/vcf-menu"
+        "POST https://api.shortcuts.plus/vcf-menu",
+        "POST https://api.shortcuts.plus/ai"
       ];
       return new Response("[\n  " + directory.map(path => JSON.stringify(path)).join(",\n  ") + "\n]", {
         status: 200,
@@ -663,17 +787,17 @@ export default {
       let body;
       try { body = await request.json(); } catch { return json({ error: "Request body must be valid JSON." }, 400); }
       const api = typeof body?.api === "string" ? body.api.trim() : "";
-      const apiIds = { "get-website": API_IDS.GET_WEBSITE, "vcf-menu": API_IDS.VCF_MENU };
-      if (!Object.prototype.hasOwnProperty.call(apiIds, api)) return json({ error: "api must be get-website or vcf-menu." }, 400);
+      const apiIds = { "get-website": API_IDS.GET_WEBSITE, "vcf-menu": API_IDS.VCF_MENU, "ai": API_IDS.AI };
+      if (!Object.prototype.hasOwnProperty.call(apiIds, api)) return json({ error: "api must be get-website, vcf-menu, or ai." }, 400);
       try {
         const authorization = await issuePublicBasicToken(env, apiIds[api]);
         return new Response(authorization, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "Authorization, Content-Type", "x-content-type-options": "nosniff" }});
       } catch { return json({ error: "Unable to issue a token right now." }, 503); }
     }
 
-    if (url.pathname === "/get-website" || url.pathname === "/vcf-menu") {
+    if (url.pathname === "/get-website" || url.pathname === "/vcf-menu" || url.pathname === "/ai") {
       if (request.method !== "POST") return json({ error: "Use POST with a JSON request body for this endpoint." }, 405);
-      const apiId = url.pathname === "/get-website" ? API_IDS.GET_WEBSITE : API_IDS.VCF_MENU;
+      const apiId = url.pathname.slice(1);
       const valid = await consumeBasicToken(request, env, apiId);
       if (!valid) return json({ error: "A valid, unused, unexpired Basic authentication token for this API is required." }, 401);
     }
@@ -683,13 +807,16 @@ export default {
         name: "Shortcuts Plus Website API",
         status: "ok",
         endpoints: {
-          auth: "POST /auth with JSON {api}; returns a short-lived API-ID-bound Basic token (get-website or vcf-menu)",
+          auth: "POST /auth with JSON {api}; returns a short-lived API-ID-bound Basic token (get-website, vcf-menu, or ai)",
           website: "POST /get-website with JSON { url: <public-http-or-https-url> } (Basic token required)",
-          vcfMenu: "POST /vcf-menu with a JSON object mapping contact titles to subtitles (Basic token required)"
+          vcfMenu: "POST /vcf-menu with a JSON object mapping contact titles to subtitles (Basic token required)",
+          ai: "POST /ai with JSON {prompt}; 1–250 characters, ordered JSON array of {type, contents} items, no history (Basic token required)"
         },
         response: "Packaged HTML file (text/html; attachment filename: webpage.html)"
       });
     }
+
+    if (url.pathname === "/ai") return aiResponse(request, env);
 
 
     if (url.pathname === "/vcf-menu") {
@@ -718,6 +845,6 @@ export default {
       }
     }
 
-    return json({ error: "Not found", expectedPaths: ["/auth", "/get-website", "/vcf-menu"] }, 404);
+    return json({ error: "Not found", expectedPaths: ["/auth", "/get-website", "/vcf-menu", "/ai"] }, 404);
   }
 };
