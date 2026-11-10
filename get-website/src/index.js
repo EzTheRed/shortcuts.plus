@@ -405,10 +405,11 @@ function pageTitle(html) {
 }
 
 function pageCacheKey(url) {
-  const key = new URL("https://api.shortcuts.plus/__page-cache-v2");
+  const key = new URL("https://api.shortcuts.plus/__page-cache-v3");
   key.searchParams.set("url", validateTarget(url).href);
   return new Request(key.href, { method: "GET" });
 }
+
 
 
 function escapeHtml(value) {
@@ -445,36 +446,46 @@ async function renderShortcutsPlusMenu() {
       : "";
     const badge = typeof item.badge === "string" ? item.badge : "";
     const description = typeof item.desc === "string" ? item.desc : "";
-    return '<li class="item"><a class="entry" href="' + escapeHtml(item.safeLink) +
-      '" aria-label="' + escapeHtml(item.title) + '"><span class="main"><strong>' +
-      escapeHtml(item.title) + '</strong>' + (badge ? '<span class="badge">' + escapeHtml(badge) + '</span>' : '') +
+    return '<li class="shortcut"><a class="shortcut-link" href="' + escapeHtml(item.safeLink) +
+      '" aria-label="' + escapeHtml(item.title) + '"><span class="shortcut-top"><strong>' +
+      escapeHtml(item.title) + '</strong>' + (badge ? '<span class="tag">' + escapeHtml(badge) + '</span>' : '') +
       '</span>' + (description ? '<span class="description">' + escapeHtml(description) + '</span>' : '') +
       (categories ? '<span class="categories">' + escapeHtml(categories) + '</span>' : '') +
-      '<span class="open">Open shortcut <span aria-hidden="true">›</span></span></a></li>';
+      '<span class="open-label">View shortcut <span aria-hidden="true">↗</span></span></a></li>';
   }).join("\n");
 
   const html = [
     '<!doctype html><html lang="en"><head><meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    '<meta name="color-scheme" content="light dark"><title>Shortcuts Plus — All Shortcuts</title>',
+    '<meta name="color-scheme" content="light dark"><title>Shortcuts view — Shortcuts+</title>',
     '<style>',
-    ':root{color-scheme:light dark;--bg:#f3f4f8;--panel:#fff;--ink:#171923;--muted:#687080;--line:#e6e8ef;--accent:#6557d9;--soft:#efedff}',
-    '@media(prefers-color-scheme:dark){:root{--bg:#111218;--panel:#1d202a;--ink:#f4f5fa;--muted:#a7adbd;--line:#303442;--accent:#b8afff;--soft:#302c4e}}',
-    '*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}',
-    '.wrap{width:min(100% - 28px,680px);margin:0 auto;padding:30px 0 48px}header{padding:10px 4px 22px}',
-    '.eyebrow{font-size:12px;font-weight:750;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}',
-    'h1{font-size:32px;line-height:1.1;letter-spacing:-.04em;margin:8px 0}.sub{color:var(--muted);margin:0}',
-    '.count{display:inline-flex;margin-top:14px;padding:6px 11px;border-radius:999px;background:var(--soft);color:var(--accent);font-size:13px;font-weight:700}',
-    '.menu{list-style:none;padding:0;margin:0;background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden}',
-    '.item+.item{border-top:1px solid var(--line)}.entry{display:block;padding:16px 17px;color:inherit;text-decoration:none}',
-    '.entry:active{background:var(--soft)}.main{display:flex;align-items:center;gap:9px;flex-wrap:wrap}',
-    'strong{font-size:17px;letter-spacing:-.01em}.badge{font-size:11px;font-weight:700;color:var(--accent);background:var(--soft);padding:3px 8px;border-radius:999px}',
-    '.description{display:block;color:var(--muted);font-size:14px;margin-top:5px}.categories{display:block;color:var(--muted);font-size:11px;margin-top:8px}',
-    '.open{display:flex;justify-content:space-between;align-items:center;color:var(--accent);font-size:13px;font-weight:700;margin-top:10px}',
-    'footer{padding:18px 4px 0;color:var(--muted);font-size:12px}</style></head><body><main class="wrap">',
-    '<header><div class="eyebrow">Shortcuts Plus</div><h1>All shortcuts</h1>',
-    '<p class="sub">Browse the complete collection in one simple menu.</p><span class="count">' + entries.length + ' shortcuts</span></header>',
-    '<ul class="menu">' + rows + '</ul><footer>Choose an item to open its shortcut or source page.</footer>',
+    ':root{color-scheme:light dark;--page:#f7f7f5;--surface:#fff;--ink:#191a18;--muted:#777970;--line:#e7e7e1;--accent:#526b5d;--accent-soft:#edf1ed}',
+    '@media(prefers-color-scheme:dark){:root{--page:#151714;--surface:#20231f;--ink:#f3f3ed;--muted:#a7aa9f;--line:#363a34;--accent:#b7cbbd;--accent-soft:#2a352d}}',
+    '*{box-sizing:border-box}body{margin:0;background:var(--page);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}',
+    '.page{width:min(100% - 36px,760px);margin:0 auto;padding:22px 0 54px}',
+    '.nav{display:flex;align-items:center;justify-content:space-between;padding:2px 0 34px;border-bottom:1px solid var(--line)}',
+    '.brand{font-size:19px;font-weight:760;letter-spacing:-.055em;color:var(--ink);text-decoration:none}.brand-mark{color:var(--accent)}',
+    '.nav-label{font-size:13px;color:var(--muted)}',
+    '.hero{padding:48px 0 30px}.eyebrow{font-size:11px;font-weight:750;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}',
+    'h1{font-size:clamp(36px,8vw,58px);line-height:1.02;letter-spacing:-.065em;margin:12px 0 14px;font-weight:760}',
+    '.intro{max-width:540px;margin:0;color:var(--muted);font-size:16px;line-height:1.65}',
+    '.collection-head{display:flex;align-items:end;justify-content:space-between;gap:12px;padding:26px 0 14px;border-bottom:1px solid var(--line)}',
+    '.collection-title{margin:0;font-size:22px;letter-spacing:-.04em}.count{white-space:nowrap;color:var(--muted);font-size:12px}',
+    '.menu{list-style:none;padding:0;margin:0}.shortcut{border-bottom:1px solid var(--line)}',
+    '.shortcut-link{display:block;padding:19px 2px 20px;color:inherit;text-decoration:none}.shortcut-link:active{background:var(--accent-soft)}',
+    '.shortcut-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}strong{font-size:17px;letter-spacing:-.025em;font-weight:700}',
+    '.tag{font-size:10px;font-weight:700;letter-spacing:.025em;padding:3px 8px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}',
+    '.description{display:block;max-width:620px;color:var(--muted);font-size:14px;line-height:1.55;margin-top:6px}',
+    '.categories{display:block;color:var(--muted);font-size:11px;margin-top:9px;letter-spacing:.015em}',
+    '.open-label{display:inline-flex;gap:7px;align-items:center;color:var(--accent);font-size:12px;font-weight:700;margin-top:10px}',
+    'footer{border-top:1px solid var(--line);margin-top:34px;padding-top:17px;color:var(--muted);font-size:11px}',
+    '</style></head><body><main class="page">',
+    '<nav class="nav"><a class="brand" href="https://shortcuts.plus/">Shortcuts<span class="brand-mark">+</span></a><span class="nav-label">Library</span></nav>',
+    '<header class="hero"><div class="eyebrow">An independent shortcut library</div><h1>Shortcuts view</h1>',
+    '<p class="intro">A little shortcut. A lot more done. Browse the collection of useful workflows, creative utilities, and everyday automations.</p></header>',
+    '<section aria-label="All shortcuts"><div class="collection-head"><h2 class="collection-title">The collection.</h2><span class="count">' + entries.length + ' shortcuts</span></div>',
+    '<ul class="menu">' + rows + '</ul></section>',
+    '<footer>Shortcuts+ is an independent library. Review a shortcut’s actions and permissions before using it.</footer>',
     '</main></body></html>'
   ].join("\n");
 
