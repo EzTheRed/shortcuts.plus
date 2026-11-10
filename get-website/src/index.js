@@ -457,7 +457,7 @@ async function renderShortcutsPlusMenu() {
   const html = [
     '<!doctype html><html lang="en"><head><meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    '<meta name="color-scheme" content="light dark"><title>Shortcuts view — Shortcuts+</title>',
+    '<meta name="color-scheme" content="light dark"><title>Static View — Shortcuts+</title>',
     '<style>',
     ':root{color-scheme:light dark;--page:#f7f7f5;--surface:#fff;--ink:#191a18;--muted:#777970;--line:#e7e7e1;--accent:#526b5d;--accent-soft:#edf1ed}',
     '@media(prefers-color-scheme:dark){:root{--page:#151714;--surface:#20231f;--ink:#f3f3ed;--muted:#a7aa9f;--line:#363a34;--accent:#b7cbbd;--accent-soft:#2a352d}}',
@@ -481,7 +481,7 @@ async function renderShortcutsPlusMenu() {
     'footer{border-top:1px solid var(--line);margin-top:34px;padding-top:17px;color:var(--muted);font-size:11px}',
     '</style></head><body><main class="page">',
     '<nav class="nav"><a class="brand" href="https://shortcuts.plus/">Shortcuts<span class="brand-mark">+</span></a><span class="nav-label">Library</span></nav>',
-    '<header class="hero"><div class="eyebrow">An independent shortcut library</div><h1>Shortcuts view</h1>',
+    '<header class="hero"><div class="eyebrow">An independent shortcut library</div><h1>Static View</h1>',
     '<p class="intro">A little shortcut. A lot more done. Browse the collection of useful workflows, creative utilities, and everyday automations.</p></header>',
     '<section aria-label="All shortcuts"><div class="collection-head"><h2 class="collection-title">The collection.</h2><span class="count">' + entries.length + ' shortcuts</span></div>',
     '<ul class="menu">' + rows + '</ul></section>',
