@@ -631,7 +631,17 @@ export default {
 
     if (url.hostname.toLowerCase() === "api.shortcuts.plus" && url.pathname === "/api") {
       if (request.method !== "GET") return json({ error: "Use GET to retrieve the active API list." }, 405);
-      return json(["get-website", "vcf-menu", "posts"]);
+      return json({
+        "get-website": {
+          endpoints: ["/get-website", "/auth"]
+        },
+        "vcf-menu": {
+          endpoints: ["/vcf-menu", "/auth"]
+        },
+        "posts": {
+          endpoints: ["/", "/all", "/{id}", "/auth"]
+        }
+      });
     }
 
     if (url.pathname === "/auth") {
