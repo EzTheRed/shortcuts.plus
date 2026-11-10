@@ -72,15 +72,25 @@ The API hostname is protected by a Cloudflare Access application named **Shortcu
 
 ### Issue a 10-second Basic token
 
-After Cloudflare Access has authenticated the request, call:
+After Cloudflare Access has authenticated the request, send a **POST** request to:
 
 ```text
-GET https://api.shortcuts.plus/auth?name=WebPortal%2B&api=get-website
+https://api.shortcuts.plus/auth
 ```
 
-The `name` parameter is required and identifies the client in the audit log. The `api` parameter must be `get-website` or `vcf-menu`.
+Set `Content-Type: application/json` and send this JSON body:
 
-The response contains an `authorization` value. Send that exact value in the HTTP `Authorization` header on the next request to the selected endpoint. It uses standard HTTP Basic authentication: the client name is the username and a cryptographically random token is the password. The token is valid for **10 seconds**, is scoped to exactly one endpoint, and is **single-use**. Request a fresh token for every API call.
+```json
+{
+  "name": "WebPortal+",
+  "api": "get-website"
+}
+```
+
+- `name`: required client/agent name (1–48 allowed characters); use a name generated from relevant client data.
+- `api`: exact endpoint name, either `get-website` or `vcf-menu`.
+
+The response contains an `authorization` value. Send that exact value in the HTTP `Authorization` header on the next request to the selected endpoint. It uses standard HTTP Basic authentication: the client name is the username and a cryptographically random token is the password. The token is valid for **10 seconds**, is scoped to exactly one endpoint, and is **single-use**. Its first successful use immediately invalidates it; if it is not used, it expires after 10 seconds. Request a fresh token for every API call.
 
 The Worker stores only a SHA-256 hash of each token in the private D1 audit database. It never stores the raw token or the Basic header. Tokens are checked and marked used atomically, so a token cannot be replayed.
 
@@ -99,13 +109,14 @@ Cloudflare Access identity authentication is separate from the short-lived Basic
 ## Suggested Apple Shortcuts flow
 
 1. Ask for or receive the starting URL.
-2. Use **URL Encode** on the URL.
-3. Use **Get Contents of URL** with `https://api.shortcuts.plus/get-website?url=` followed by the encoded URL.
-4. Use **Get Dictionary from Input** on the response.
-5. Get the `file` value, save it with an `.html` extension, and use **Quick Look** to preview it.
-6. Get the `dynamic` array and use **Choose from List** with the item labels.
-7. When a link is chosen, use its `target` to call `/get-website` again. For a GET form, ask for the listed field values, build the target URL with those values as query parameters, and call `/get-website` again.
-8. Repeat the display and selection steps for the returned page.
+2. Build the client name from relevant Shortcuts data (for example, a fixed shortcut/agent label such as `WebPortal+`).
+3. Use **Get Contents of URL** for `https://api.shortcuts.plus/auth`, set method to **POST**, set `Content-Type: application/json`, and provide a JSON body with `name` and `api: get-website`.
+4. Parse the response and copy its `authorization` value.
+5. Immediately call `https://api.shortcuts.plus/get-website?url=<URL-encoded-url>` with the returned value in the HTTP `Authorization` header. Do not delay: the token expires after 10 seconds and works once.
+6. Use **Get Dictionary from Input** on the webpage response.
+7. Get the `file` value, save it with an `.html` extension, and use **Quick Look** to preview it.
+8. Get the `dynamic` array and use **Choose from List** with the item labels.
+9. When a link is chosen, repeat steps 3–8 with `api: get-website` and that item's `target`. For a GET form, collect its fields and build the target URL with those values as query parameters before repeating the request.
 
 Shortcuts handles choices and form prompts natively. Quick Look is only the display surface: it does not send a callback when an HTML element is tapped.
 
