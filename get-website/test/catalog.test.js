@@ -37,7 +37,7 @@ test('resolves every ID-only shortcut, including records beyond 60', async () =>
   assert.equal(result.metadata.shortcutCount, 75);
   assert.equal((result.file.match(/class="project-card"/g) || []).length, 75);
   assert.equal(result.dynamic.length, 76); // Home plus every shortcut.
-  assert.ok(result.dynamic.some(item => item.target.endsWith('/shortcut-74')));
+  assert.ok(result.dynamic.some(item => item.target.endsWith('/shortcut-74') && item.label === 'shortcut-74'));
   assert.ok(!result.file.includes('<script'));
   assert.ok(result.file.includes('75</span>'));
 });

@@ -473,7 +473,7 @@ async function renderShortcutsPlusMenu() {
       String(index + 1).padStart(2, "0") + '</span></div><h2>' + escapeHtml(item.title) +
       '</h2><p class="card-description">' + escapeHtml(item.desc || "A shortcut made for the Shortcuts app.") +
       '</p><div class="chips">' + categories.map(value => '<span class="chip">' + escapeHtml(value) + '</span>').join("") +
-      '</div><a class="project-link" href="' + escapeHtml(item.safeLink) + '">' +
+      '</div><a class="project-link" aria-label="' + escapeHtml(item.title) + '" href="' + escapeHtml(item.safeLink) + '">' +
       (item.downloadable ? 'Get shortcut' : 'View details') + ' <span aria-hidden="true">↗</span></a></article>';
   }).join("");
 
