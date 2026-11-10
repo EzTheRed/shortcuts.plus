@@ -43,14 +43,17 @@ async function sha256Hex(value) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
-const TEST_PHRASE_HASHES = new Set([
-  "532eaabd9574880dbf76b9b8cc00832c20a6ec113d682299550d7a6e0f345e25",
-  "c8e5998f6a3955c21d858936fe05c69621724d7f825c6e17793002a0fa798bf9"
-]);
-
-async function validTestCredentials(user, phrase) {
+async function validTestCredentials(env, user, phrase) {
   if (user !== "EzTheRed" || typeof phrase !== "string" || phrase.length > 128) return false;
-  return TEST_PHRASE_HASHES.has(await sha256Hex(phrase));
+  let configured;
+  try {
+    configured = JSON.parse(env.TEST_PHRASE_HASHES || "{}");
+  } catch {
+    return false;
+  }
+  const allowedHashes = configured[user];
+  if (!Array.isArray(allowedHashes)) return false;
+  return allowedHashes.includes(await sha256Hex(phrase));
 }
 
 async function ownerIdentity(executionCtx) {
@@ -617,7 +620,7 @@ export default {
       if (!input || typeof input !== "object" || Array.isArray(input)) {
         return json({ error: "The request body must be a JSON object." }, 400);
       }
-      if (!await validTestCredentials(input.User, input.Phrase)) {
+      if (!await validTestCredentials(env, input.User, input.Phrase)) {
         return json({ error: "Invalid test username or phrase." }, 401);
       }
       try {
@@ -665,6 +668,18 @@ export default {
         return json({ error: "A name is required. Use 1-48 letters, numbers, dots, underscores, plus signs, or hyphens." }, 400);
       }
       if (!scope) return json({ error: "api must be get-website or vcf-menu." }, 400);
+      if (!env.AUTH_DB) return json({ error: "Authentication storage is not configured." }, 503);
+      let allowedShortcut;
+      try {
+        allowedShortcut = await env.AUTH_DB.prepare(
+          "SELECT name FROM allowed_shortcuts WHERE name = ? AND enabled = 1"
+        ).bind(name).first();
+      } catch {
+        return json({ error: "Shortcut allowlist storage is unavailable." }, 503);
+      }
+      if (!allowedShortcut) {
+        return json({ error: "This shortcut name is not registered for production API access." }, 403);
+      }
       try {
         return json(await issueBasicToken(env, identity, name, scope));
       } catch (error) {
