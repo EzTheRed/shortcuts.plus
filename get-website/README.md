@@ -112,7 +112,7 @@ Send the exact case-sensitive JSON keys `User` and `Phrase`:
 }
 ```
 
-The optional `API` property is ignored for test authorization. A test token has type `TEST`, expires after 10 seconds, and can be used once. It is restricted to the test-verification endpoint and cannot authorize `/get-website` or `/vcf-menu`.
+The optional `API` property is ignored for test authorization. The response body contains only the Basic authorization value as plain text. A test token has type `TEST` in the audit log, expires after 10 seconds, and can be used once. It is restricted to the test-verification endpoint and cannot authorize `/get-website` or `/vcf-menu`.
 
 Verify it immediately with:
 
