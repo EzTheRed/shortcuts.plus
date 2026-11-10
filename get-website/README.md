@@ -70,7 +70,7 @@ Use **Get Contents of URL** with method **GET**. No request body or headers are 
 
 The public `POST /auth` endpoint issues a short-lived, single-use Basic authorization value. It does not require Cloudflare Access or an identity login.
 
-Send JSON containing only `api` (`get-website` or `vcf-menu`). The response body is only the Basic authorization value as plain text. Tokens expire after 10 seconds, are bound to the selected API's ID, and can be used once.
+Send JSON containing only `api` (`get-website`, `vcf-menu`, or `posts`). The response body is only the Basic authorization value as plain text. Tokens expire after 10 seconds, are bound to the selected API's ID, and can be used once.
 
 Example request:
 
@@ -110,15 +110,15 @@ The Worker accepts only public HTTP/HTTPS destinations, blocks local/private/res
 
 ## Active API directory
 
-`GET https://api.shortcuts.plus/api` returns a JSON array of currently active API identifiers, for example:
+`GET https://api.shortcuts.plus/api` returns a JSON-only API catalog. Each top-level key is an API folder containing its base URL, purpose, authentication requirements, and endpoint definitions. Endpoint entries document methods, paths, parameters, request bodies, and response content types.
 
-```json
-{
-  "get-website": { "endpoints": ["/get-website", "/auth"] },
-  "vcf-menu": { "endpoints": ["/vcf-menu", "/auth"] },
-  "posts": { "endpoints": ["/", "/all", "/{id}", "/auth"] }
-}
-```
+The catalog is the machine-readable reference for the active APIs. It currently describes:
+
+- `get-website` — webpage packaging.
+- `vcf-menu` — downloadable vCard menu generation.
+- `posts` — public post publishing and retrieval.
+
+The response also includes shared conventions for authentication and errors. Use each endpoint's `url` or `url_template` rather than assuming every API shares the same hostname.
 
 ## Public Posts API
 
