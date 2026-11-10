@@ -548,7 +548,7 @@ async function getAllPosts(request, env) {
 function escapeVCard(value) {
   return String(value ?? "")
     .replace(/\\/g, "\\\\")
-    .replace(/\r\n|\r|\n/g, "\\n")
+    .replace(/\r\n|\r|\n/g, "\n")
     .replace(/,/g, "\\,")
     .replace(/;/g, "\\;");
 }
@@ -641,7 +641,7 @@ export default {
         "https://posts.shortcuts.plus/auth",
         "https://posts.shortcuts.plus/all"
       ];
-      return new Response("[\\n  " + directory.map(path => JSON.stringify(path)).join(",\\n  ") + "\\n]", {
+      return new Response("[\n  " + directory.map(path => JSON.stringify(path)).join(",\n  ") + "\n]", {
         status: 200,
         headers: {
           "content-type": "text/plain; charset=utf-8",
