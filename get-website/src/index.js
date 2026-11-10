@@ -443,22 +443,21 @@ function foldVCardLine(line) {
 }
 
 function vcardResponse(items) {
-  if (!Array.isArray(items)) {
-    return json({ error: "Send a JSON array of objects with title and subtitle fields." }, 400);
+  if (!items || typeof items !== "object" || Array.isArray(items)) {
+    return json({ error: "Send a JSON object whose property names are contact titles and whose string values are subtitles." }, 400);
   }
-  if (items.length < 1 || items.length > 100) {
-    return json({ error: "Provide between 1 and 100 menu items." }, 400);
+  const entries = Object.entries(items);
+  if (entries.length < 1 || entries.length > 100) {
+    return json({ error: "Provide between 1 and 100 contacts." }, 400);
   }
   const cards = [];
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    if (!item || typeof item !== "object" || Array.isArray(item) ||
-        typeof item.title !== "string" || typeof item.subtitle !== "string" ||
-        !item.title.trim()) {
-      return json({ error: "Each item must contain a non-empty string title and a string subtitle.", item: i }, 400);
+  for (let i = 0; i < entries.length; i++) {
+    const [rawTitle, rawSubtitle] = entries[i];
+    if (!rawTitle.trim() || typeof rawSubtitle !== "string") {
+      return json({ error: "Each property must have a non-empty title and a string subtitle.", item: i }, 400);
     }
-    const title = escapeVCard(item.title.trim());
-    const subtitle = escapeVCard(item.subtitle);
+    const title = escapeVCard(rawTitle.trim());
+    const subtitle = escapeVCard(rawSubtitle);
     const lines = [
       "BEGIN:VCARD",
       "VERSION:3.0",
@@ -471,7 +470,7 @@ function vcardResponse(items) {
     ];
     cards.push(lines.map(foldVCardLine).join("\r\n"));
   }
-  return new Response(cards.join("\r\n") + "\r\n", {
+  return new Response(cards.join("\r\n\r\n") + "\r\n", {
     status: 200,
     headers: {
       "content-type": "text/vcard; charset=utf-8",
@@ -523,7 +522,7 @@ export default {
 
 
     if (url.pathname === "/get-vcf") {
-      if (request.method !== "POST") return json({ error: "Use POST with a JSON array of { title, subtitle } objects." }, 405);
+      if (request.method !== "POST") return json({ error: "Use POST with a JSON object mapping contact titles to subtitles." }, 405);
       try {
         const items = await request.json();
         return vcardResponse(items);
