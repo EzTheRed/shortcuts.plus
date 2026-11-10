@@ -632,14 +632,126 @@ export default {
     if (url.hostname.toLowerCase() === "api.shortcuts.plus" && url.pathname === "/api") {
       if (request.method !== "GET") return json({ error: "Use GET to retrieve the active API list." }, 405);
       return json({
-        "get-website": {
-          endpoints: ["/get-website", "/auth"]
+        success: true,
+        service: "Shortcuts Plus API",
+        version: "1.0",
+        directory: "https://api.shortcuts.plus/api",
+        apis: {
+          "get-website": {
+            base_url: "https://api.shortcuts.plus",
+            description: "Fetch and package a public webpage as HTML with extracted links and GET forms for Shortcuts.",
+            authentication: {
+              required: true,
+              type: "Basic",
+              token_endpoint: "POST /auth",
+              token_request: { api: "get-website" },
+              token_lifetime_seconds: 10,
+              single_use: true
+            },
+            endpoints: [
+              {
+                method: "GET",
+                path: "/get-website",
+                url: "https://api.shortcuts.plus/get-website",
+                description: "Retrieve a webpage package.",
+                query: {
+                  url: { required: true, type: "string", description: "URL-encoded public HTTP or HTTPS webpage URL." }
+                },
+                authentication_required: true,
+                response: "application/json"
+              }
+            ]
+          },
+          "vcf-menu": {
+            base_url: "https://api.shortcuts.plus",
+            description: "Generate a downloadable vCard file containing menu contacts.",
+            authentication: {
+              required: true,
+              type: "Basic",
+              token_endpoint: "POST /auth",
+              token_request: { api: "vcf-menu" },
+              token_lifetime_seconds: 10,
+              single_use: true
+            },
+            endpoints: [
+              {
+                method: "GET",
+                path: "/vcf-menu",
+                url: "https://api.shortcuts.plus/vcf-menu",
+                description: "Generate a .vcf file from a JSON object mapping contact titles to subtitles.",
+                query: {
+                  data: { required: true, type: "string", description: "URL-encoded JSON object; 1–100 entries." }
+                },
+                authentication_required: true,
+                response: "text/vcard"
+              }
+            ]
+          },
+          "posts": {
+            base_url: "https://posts.shortcuts.plus",
+            description: "Publish and retrieve public text posts or iCloud Shortcut sharing links.",
+            authentication: {
+              required_for: ["POST /"],
+              type: "Basic",
+              token_endpoint: "POST /auth",
+              token_request: { api: "posts" },
+              token_lifetime_seconds: 10,
+              single_use: true
+            },
+            endpoints: [
+              {
+                method: "POST",
+                path: "/auth",
+                url: "https://posts.shortcuts.plus/auth",
+                description: "Issue a short-lived, single-use Basic token for publishing.",
+                authentication_required: false,
+                request_body: { api: "posts" },
+                response: "text/plain"
+              },
+              {
+                method: "POST",
+                path: "/",
+                url: "https://posts.shortcuts.plus/",
+                description: "Publish a public post. Date and time are assigned automatically in UTC.",
+                authentication_required: true,
+                request_headers: { "content-type": "application/json", authorization: "Basic <token>" },
+                request_body: {
+                  name: "Post title",
+                  content: "Plain text or an HTTPS iCloud Shortcut sharing URL",
+                  poster: "Poster name"
+                },
+                response: "application/json"
+              },
+              {
+                method: "GET",
+                path: "/all",
+                url: "https://posts.shortcuts.plus/all",
+                description: "List public posts, newest first.",
+                authentication_required: false,
+                query: {
+                  limit: { required: false, type: "integer", default: 50, maximum: 100 },
+                  offset: { required: false, type: "integer", default: 0, minimum: 0 }
+                },
+                response: "application/json"
+              },
+              {
+                method: "GET",
+                path: "/{id}",
+                url_template: "https://posts.shortcuts.plus/{id}",
+                description: "Retrieve one public post by its incrementing numeric ID.",
+                authentication_required: false,
+                path_parameters: {
+                  id: { required: true, type: "integer" }
+                },
+                response: "application/json"
+              }
+            ]
+          }
         },
-        "vcf-menu": {
-          endpoints: ["/vcf-menu", "/auth"]
-        },
-        "posts": {
-          endpoints: ["/", "/all", "/{id}", "/auth"]
+        conventions: {
+          errors: { format: { error: "Human-readable error message" } },
+          authentication: "Send the returned Basic token unchanged in the Authorization header. Tokens expire after 10 seconds and can be used once.",
+          content_type: "JSON request bodies use application/json; JSON responses use application/json."
         }
       });
     }
