@@ -94,13 +94,59 @@ The response contains an `authorization` value. Send that exact value in the HTT
 
 The Worker stores only a SHA-256 hash of each token in the private D1 audit database. It never stores the raw token or the Basic header. Tokens are checked and marked used atomically, so a token cannot be replayed.
 
+### Test authentication (separate from production APIs)
+
+Use this endpoint to test the authentication mechanism without registering a production shortcut:
+
+```text
+POST https://api.shortcuts.plus/auth/test
+Content-Type: application/json
+```
+
+Send the exact case-sensitive JSON keys `User` and `Phrase`:
+
+```json
+{
+  "User": "EzTheRed",
+  "Phrase": "<one of the phrases configured for this user>"
+}
+```
+
+The optional `API` property is ignored for test authorization. A test token has type `TEST`, expires after 10 seconds, and can be used once. It is restricted to the test-verification endpoint and cannot authorize `/get-website` or `/vcf-menu`.
+
+Verify it immediately with:
+
+```text
+POST https://api.shortcuts.plus/auth/test/verify
+Authorization: <the authorization value returned by /auth/test>
+```
+
+A successful verification returns `authenticated: true`. The test phrases are stored as a Cloudflare Worker secret in hashed form, not in this repository or the audit database. Cloudflare Access is still required for both requests.
+
+### Production shortcut allowlist
+
+Production `POST /auth` accepts only the exact API names `get-website` and `vcf-menu`, and only shortcut names registered in the D1 `allowed_shortcuts` table. The table currently has no registered shortcuts, so production token requests will return HTTP 403 until a shortcut is added. Test authentication does not use this allowlist.
+
+To register a shortcut, run this SQL in the `shortcuts-auth-audit` D1 database:
+
+```sql
+INSERT INTO allowed_shortcuts (name, enabled, created_at)
+VALUES ('WebPortal+', 1, unixepoch());
+```
+
+Use the exact shortcut name in the `name` property when requesting a production token. To disable a name without deleting it:
+
+```sql
+UPDATE allowed_shortcuts SET enabled = 0 WHERE name = 'WebPortal+';
+```
+
 ### View recent token audit entries
 
 ```text
 GET https://api.shortcuts.plus/auth/logs?limit=30
 ```
 
-This endpoint is also protected by Cloudflare Access and returns the most recent token issuance records for the authenticated owner. Each record includes the client name, API scope, issue/expiry/use timestamps, and a short SHA-256 fingerprint. It does not reveal usable credentials.
+This endpoint is also protected by Cloudflare Access and returns the most recent token issuance records for the authenticated owner. Each record includes the client name, API scope (null for test tokens), token type (`SHORTCUT` or `TEST`), issue/expiry/use timestamps, and a short SHA-256 fingerprint. It does not reveal usable credentials.
 
 ### Important client note
 
