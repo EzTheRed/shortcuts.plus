@@ -57,6 +57,18 @@ async function consumeBasicToken(request, env, scope, tokenType = "SHORTCUT") {
 }
 
 
+async function issuePublicBasicToken(env, name, scope) {
+  if (!env.AUTH_DB) throw new Error("Token storage is unavailable.");
+  const random = new Uint8Array(32);
+  crypto.getRandomValues(random);
+  const token = [...random].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  const tokenHash = await sha256Hex(token);
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = now + 10;
+  const id = crypto.randomUUID();
+  await env.AUTH_DB.prepare("INSERT INTO auth_tokens (id, token_hash, name, identity_email, scope, issued_at, expires_at, token_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(id, tokenHash, name, "public", scope, now, expiresAt, "SHORTCUT").run();
+  return "Basic " + btoa(name + ":" + token);
+}
 function isPrivateOrLocalHost(hostname) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") ||
@@ -536,6 +548,22 @@ export default {
       }});
     }
 
+    if (url.pathname === "/auth") {
+      if (request.method !== "POST") return json({ error: "Use POST with a JSON body containing name and api." }, 405);
+      const contentLength = Number(request.headers.get("content-length") || 0);
+      if (contentLength > 2048) return json({ error: "Request body is too large." }, 413);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "Request body must be valid JSON." }, 400); }
+      const name = typeof body?.name === "string" ? body.name.trim() : "";
+      const api = typeof body?.api === "string" ? body.api.trim() : "";
+      if (!/^[A-Za-z0-9._+-]{1,48}$/.test(name)) return json({ error: "Invalid name." }, 400);
+      const scopes = { "get-website": "/get-website", "vcf-menu": "/vcf-menu" };
+      if (!Object.prototype.hasOwnProperty.call(scopes, api)) return json({ error: "api must be either get-website or vcf-menu." }, 400);
+      try {
+        const authorization = await issuePublicBasicToken(env, name, scopes[api]);
+        return new Response(authorization, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "Authorization, Content-Type", "x-content-type-options": "nosniff" }});
+      } catch { return json({ error: "Unable to issue a token right now." }, 503); }
+    }
     if (url.pathname === "/get-website" || url.pathname === "/vcf-menu") {
       if (request.method !== "GET") return json({ error: "Only GET requests are supported for this endpoint." }, 405);
       const valid = await consumeBasicToken(request, env, url.pathname);
@@ -547,6 +575,7 @@ export default {
         name: "Shortcuts Plus Website API",
         status: "ok",
         endpoints: {
+          auth: "POST /auth with JSON {name, api}; returns a short-lived Basic token",
           website: "GET /get-website?url=<URL-encoded-public-website> (Basic token required)",
           vcfMenu: "GET /vcf-menu?data=<URL-encoded-JSON-object> (Basic token required)"
         },
@@ -578,6 +607,6 @@ export default {
       }
     }
 
-    return json({ error: "Not found", expectedPaths: ["/get-website", "/vcf-menu"] }, 404);
+    return json({ error: "Not found", expectedPaths: ["/auth", "/get-website", "/vcf-menu"] }, 404);
   }
 };
