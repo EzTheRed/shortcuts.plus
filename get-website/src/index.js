@@ -153,7 +153,7 @@ async function issueBasicToken(env, identity, name, scope, tokenType = "SHORTCUT
   };
 }
 
-async function consumeBasicToken(request, env, identity, scope, tokenType = "SHORTCUT") {
+async function consumeBasicToken(request, env, scope, tokenType = "SHORTCUT") {
   if (!env.AUTH_DB) return false;
   const header = request.headers.get("authorization") || "";
   const match = header.match(/^Basic\s+([A-Za-z0-9+/]+=*)$/i);
@@ -175,8 +175,8 @@ async function consumeBasicToken(request, env, identity, scope, tokenType = "SHO
   const now = Math.floor(Date.now() / 1000);
   try {
     const consumed = await env.AUTH_DB.prepare(
-      "UPDATE auth_tokens SET used_at = ? WHERE token_hash = ? AND name = ? AND identity_email = ? AND scope = ? AND token_type = ? AND expires_at > ? AND used_at IS NULL AND revoked = 0 RETURNING id"
-    ).bind(now, tokenHash, name, identity.email, scope, tokenType, now).first();
+      "UPDATE auth_tokens SET used_at = ? WHERE token_hash = ? AND name = ? AND scope = ? AND token_type = ? AND expires_at > ? AND used_at IS NULL AND revoked = 0 RETURNING id"
+    ).bind(now, tokenHash, name, scope, tokenType, now).first();
     return Boolean(consumed);
   } catch {
     return false;
@@ -662,8 +662,15 @@ export default {
       }});
     }
 
-    const identity = await ownerIdentity(request);
-    if (!identity) return json({ error: "Cloudflare Access authentication required." }, 401);
+    // Only token issuance, test verification, audit logs, and the diagnostic root
+    // require an owner Cloudflare Access identity. The two production data APIs
+    // are bearer-token protected and must work without an interactive Access login.
+    const ownerOnlyPaths = new Set(["/", "/auth", "/auth/test", "/auth/test/verify", "/auth/logs"]);
+    let identity = null;
+    if (ownerOnlyPaths.has(url.pathname)) {
+      identity = await ownerIdentity(request);
+      if (!identity) return json({ error: "Cloudflare Access authentication required." }, 401);
+    }
 
     if (url.pathname === "/auth/test") {
       if (request.method !== "POST") return json({ error: "Use POST with a JSON body containing User and Phrase." }, 405);
@@ -697,7 +704,7 @@ export default {
 
     if (url.pathname === "/auth/test/verify") {
       if (request.method !== "POST") return json({ error: "Use POST with the test token in the Authorization header." }, 405);
-      const valid = await consumeBasicToken(request, env, identity, "/auth/test/verify", "TEST");
+      const valid = await consumeBasicToken(request, env, "/auth/test/verify", "TEST");
       if (!valid) return json({ error: "A valid, unused, unexpired TEST token is required." }, 401);
       return json({ authenticated: true, type: "TEST", user: "EzTheRed", api: null });
     }
@@ -774,7 +781,7 @@ export default {
 
     if (url.pathname === "/get-website" || url.pathname === "/vcf-menu") {
       if (request.method !== "GET") return json({ error: "Only GET requests are supported for this endpoint." }, 405);
-      const valid = await consumeBasicToken(request, env, identity, url.pathname);
+      const valid = await consumeBasicToken(request, env, url.pathname);
       if (!valid) return json({ error: "A valid, unused, unexpired Basic authentication token for this API is required." }, 401);
     }
 
