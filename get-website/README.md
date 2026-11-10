@@ -118,3 +118,18 @@ The former Posts API has been retired. No publishing, listing, or individual-pos
 
 
 `POST https://api.shortcuts.plus/get-website` with JSON body `{ "url": "https://example.com" }`
+
+## Shortcuts+ static collection
+
+Packaging `https://shortcuts.plus/` renders every valid catalog entry from
+`data/shortcuts.json` as a self-contained, script-free collection. ID-based
+entries resolve their current name, description, and download URL through the
+same registry as the website (`POST https://s.shortcuts.plus/`). Legacy HTTPS
+links remain supported. If a lookup fails or returns an unsafe link, the entry
+still appears with a link to its detail page. The static collection and its
+native menu links are not limited to 60 shortcuts.
+
+Run `npm test` in `get-website` for catalog regression tests. These tests exercise
+the request handler with mocked registry, authentication storage, and cache;
+they do not call production services. Deploy both the website and the
+`shortcuts-get-website` Worker to release the matching views.

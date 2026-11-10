@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "test": "node test/catalog.test.js",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {

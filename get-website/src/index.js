@@ -301,11 +301,11 @@ function safeActionUrl(raw, base) {
   }
 }
 
-function extractDynamic(html, pageUrl) {
+function extractDynamic(html, pageUrl, maxItems = 60) {
   const dynamic = [];
   const seen = new Set();
   const add = item => {
-    if (dynamic.length < 60 && !seen.has(item.id)) {
+    if (dynamic.length < maxItems && !seen.has(item.id)) {
       seen.add(item.id);
       dynamic.push(item);
     }
@@ -405,7 +405,7 @@ function pageTitle(html) {
 }
 
 function pageCacheKey(url) {
-  const key = new URL("https://api.shortcuts.plus/__page-cache-v7");
+  const key = new URL("https://api.shortcuts.plus/__page-cache-v8");
   key.searchParams.set("url", validateTarget(url).href);
   return new Request(key.href, { method: "GET" });
 }
@@ -429,65 +429,72 @@ async function renderShortcutsPlusMenu() {
   catch { throw new Error("The shortcuts data file contains invalid JSON."); }
   if (!Array.isArray(records)) throw new Error("The shortcuts data file must contain an array.");
 
-  const entries = records.slice(0, 60).filter(item =>
-    item && typeof item.title === "string" && typeof item.link === "string"
-  ).map(item => {
-    let safeLink = "";
-    try {
-      const parsed = new URL(item.link);
-      if (parsed.protocol === "https:" && !parsed.username && !parsed.password) safeLink = parsed.href;
-    } catch {}
-    return { ...item, safeLink };
-  }).filter(item => item.safeLink);
+  const entries = [];
+  // Resolve the same registry IDs as the browser, without truncating the catalog.
+  // Small batches limit simultaneous upstream connections.
+  for (let offset = 0; offset < records.length; offset += 6) {
+    const batch = await Promise.all(records.slice(offset, offset + 6).map(async (item, index) => {
+      if (!item || typeof item.title !== "string") return null;
+      const jsonIndex = offset + index;
+      let resolved = item;
+      if (typeof item.id === "string" && item.id) {
+        try {
+          const response = await fetch("https://s.shortcuts.plus/", {
+            method: "POST",
+            headers: { "content-type": "application/json", accept: "application/json" },
+            body: JSON.stringify({ shortcut: item.id })
+          });
+          const data = await response.json();
+          if (response.ok && data.success) resolved = {
+            ...item, title: data.name || item.title,
+            desc: data.description || item.desc, link: data.download || item.link
+          };
+        } catch {
+          // Keep the catalog entry visible even if the registry is unavailable.
+        }
+      }
+      let safeLink = "https://shortcuts.plus/full.html?s=" + jsonIndex;
+      let downloadable = false;
+      try {
+        const parsed = new URL(resolved.link);
+        if (parsed.protocol === "https:" && !parsed.username && !parsed.password) {
+          safeLink = parsed.href;
+          downloadable = true;
+        }
+      } catch {}
+      return { ...resolved, safeLink, downloadable };
+    }));
+    entries.push(...batch.filter(Boolean));
+  }
 
-  const cards = entries.map(item => {
-    const description = typeof item.desc === "string" ? item.desc : "A shortcut made for the Shortcuts app.";
-    const badge = "FEATURED";
-    const categories = Array.isArray(item.category)
-      ? item.category.filter(x => typeof x === "string").slice(0, 3)
-      : [];
-    const chips = categories.map(value => '<span class="chip">' + escapeHtml(value) + '</span>').join("");
-    return '<article class="project-card"><div class="card-top"><span class="app-icon" aria-hidden="true">↗</span><span class="badge">' +
-      escapeHtml(badge) + '</span><span class="card-index">01 / ' + String(entries.length).padStart(2, "0") +
-      '</span></div><h2>' + escapeHtml(item.title) + '</h2><p class="card-description">' +
-      escapeHtml(description) + '</p><div class="chips">' + chips +
-      '</div><div class="card-bottom"><span class="card-note">BUILT FOR APPLE SHORTCUTS</span><a class="project-link" href="' +
-      escapeHtml(item.safeLink) + '">View shortcut <span aria-hidden="true">↗</span></a></div></article>';
+  const cards = entries.map((item, index) => {
+    const categories = Array.isArray(item.category) ? item.category.filter(x => typeof x === "string") : [];
+    return '<article class="project-card"><div class="card-top"><span class="app-icon" aria-hidden="true">✦</span><span class="card-index">' +
+      String(index + 1).padStart(2, "0") + '</span></div><h2>' + escapeHtml(item.title) +
+      '</h2><p class="card-description">' + escapeHtml(item.desc || "A shortcut made for the Shortcuts app.") +
+      '</p><div class="chips">' + categories.map(value => '<span class="chip">' + escapeHtml(value) + '</span>').join("") +
+      '</div><a class="project-link" href="' + escapeHtml(item.safeLink) + '">' +
+      (item.downloadable ? 'Get shortcut' : 'View details') + ' <span aria-hidden="true">↗</span></a></article>';
   }).join("");
 
   const html = [
     '<!doctype html><html lang="en"><head><meta charset="utf-8">',
-    '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    '<meta name="color-scheme" content="light dark"><meta name="theme-color" content="#111318">',
-    '<title>Shortcuts+ — Quick Look Showcase</title>',
+    '<meta name="viewport" content="width=device-width,initial-scale=1">',
+    '<meta name="color-scheme" content="light dark"><title>Shortcuts+ — All Shortcuts</title>',
     '<style>',
-    ':root{color-scheme:light;--bg:#f4f6f9;--panel:#fff;--panel2:#eef2f7;--ink:#172437;--muted:#617086;--line:#dce3ec;--accent:#245b9e;--accent2:#6d89ad}',
-    '*{box-sizing:border-box}html{min-height:100%;background:var(--bg)}body{margin:0;background:linear-gradient(180deg,#fff 0,#f4f6f9 440px);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}',
-    '.page{width:min(100% - 40px,760px);margin:0 auto;padding:28px 0 44px}.nav{display:flex;justify-content:space-between;align-items:center;padding:2px 0 22px;border-bottom:1px solid var(--line)}',
-    '.brand{font-size:19px;font-weight:750;letter-spacing:-.045em;color:var(--ink);text-decoration:none}.brand span{color:var(--accent)}.nav-pill{font-size:9px;letter-spacing:.12em;font-weight:750;color:#385b83;border:1px solid #d5dfeb;border-radius:4px;padding:6px 9px;background:#f7f9fc}',
-    '.hero{padding:46px 0 28px}.eyebrow{display:flex;align-items:center;gap:9px;color:#526a87;font-size:10px;font-weight:750;letter-spacing:.15em;text-transform:uppercase}.eyebrow:before{content:"";width:18px;height:2px;background:var(--accent)}',
-    'h1{font-size:clamp(39px,8vw,62px);line-height:1.02;letter-spacing:-.065em;margin:14px 0 15px;font-weight:780;color:#172437}h1 em{font-style:normal;color:var(--accent)}.intro{max-width:570px;color:#596a80;font-size:15px;line-height:1.75;margin:0}',
-    '.preview{margin:8px 0 30px;padding:15px;border:1px solid #dce3ec;border-radius:12px;background:#fff;box-shadow:0 8px 24px #24364b0b}',
-    '.preview-bar{display:flex;align-items:center;gap:6px;padding:2px 3px 12px;border-bottom:1px solid #e8edf3}.dot{width:7px;height:7px;border-radius:50%;background:#aab7c7}.preview-label{margin-left:7px;color:#6d7d91;font-size:9px;letter-spacing:.1em;font-weight:750}',
-    '.preview-content{padding:22px 8px 13px}.preview-kicker{font-size:9px;letter-spacing:.15em;color:#567397;font-weight:750}.preview-title{font-size:25px;line-height:1.15;letter-spacing:-.045em;color:#1b2b40;font-weight:750;margin:9px 0 7px}.preview-copy{font-size:12px;color:#65758a;max-width:420px;margin:0;line-height:1.7}.preview-lines{display:flex;gap:7px;margin-top:17px}.preview-lines span{height:5px;border-radius:4px;background:#e7ecf2;display:block}.preview-lines span:first-child{width:34%}.preview-lines span:nth-child(2){width:19%;background:#9bb4d2}.preview-lines span:nth-child(3){width:12%}',
-    '.section-head{display:flex;justify-content:space-between;align-items:center;margin:0 0 12px}.section-label{font-size:10px;letter-spacing:.15em;font-weight:750;color:#526781}.count{font-size:10px;color:#78879a}',
-    '.project-card{border:1px solid #dce3ec;border-radius:12px;padding:21px;background:#fff;box-shadow:0 5px 18px #24364b08}.card-top{display:flex;align-items:center;gap:9px}.app-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:8px;background:#eaf0f7;color:#285b91;font-size:19px;font-weight:750}.badge{font-size:9px;letter-spacing:.1em;font-weight:750;color:#365d86;background:#f1f5fa;border:1px solid #dce5ef;border-radius:4px;padding:5px 8px}.card-index{margin-left:auto;color:#8794a5;font-size:10px;font-variant-numeric:tabular-nums}',
-    '.project-card h2{font-size:26px;letter-spacing:-.05em;color:#1b2b40;margin:17px 0 5px}.card-description{font-size:13px;color:#637389;line-height:1.7;margin:0;max-width:540px}.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:15px}.chip{font-size:10px;color:#526781;padding:5px 9px;border-radius:5px;background:#f6f8fb;border:1px solid #e2e8f0}',
-    '.card-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #e8edf3;margin-top:19px;padding-top:15px}.card-note{font-size:8px;letter-spacing:.12em;color:#8794a5;font-weight:750}.project-link{color:#245b9e;text-decoration:none;font-size:12px;font-weight:750}.project-link span{padding-left:4px}',
-    '.quicklook{margin-top:24px;padding:18px 19px;border:1px solid #dce3ec;border-radius:10px;background:#eef2f7}.quicklook h3{font-size:14px;color:#1d3048;margin:0 0 6px;letter-spacing:-.02em}.quicklook p{font-size:12px;line-height:1.75;color:#5e6f84;margin:0}.quicklook strong{color:#263e5b}',
-    'footer{display:flex;justify-content:space-between;gap:12px;margin-top:26px;padding-top:16px;border-top:1px solid var(--line);color:#7b899a;font-size:9px;letter-spacing:.04em}.footer-mark{font-weight:800;letter-spacing:.02em;color:#536780}',
-    '@media(min-width:560px){.page{padding-top:36px}.hero{padding-top:54px}.preview{padding:18px}.preview-content{padding:26px 12px 16px}.project-card{padding:25px}}',
-
+    ':root{color-scheme:light dark;--bg:#fff;--panel:#f5f5f7;--ink:#1d1d1f;--muted:#6e6e73;--accent:#0066cc;--line:#d2d2d7}',
+    '*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--accent)}a:focus-visible{outline:3px solid var(--accent);outline-offset:5px}',
+    '.page{width:min(1024px,100% - 48px);margin:auto}.nav{display:flex;align-items:center;justify-content:space-between;min-height:64px;border-bottom:1px solid var(--line)}.brand{color:var(--ink);font-size:21px;font-weight:600;text-decoration:none;letter-spacing:-.8px}.brand span{color:var(--accent)}.nav-label{font-size:12px;color:var(--muted)}',
+    '.hero{text-align:center;padding:88px 0 72px}.eyebrow{margin:0 0 18px;font-size:14px;font-weight:600;color:var(--muted)}h1{margin:0;font-size:clamp(44px,8vw,80px);line-height:1.05;letter-spacing:-.055em;font-weight:700}h1 span{color:var(--muted)}.intro{max-width:540px;margin:24px auto 0;font-size:21px;line-height:1.45;color:var(--muted)}',
+    '.section-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin:0 0 24px}.section-head h2{font-size:28px;letter-spacing:-1px;margin:0}.count{color:var(--muted);font-size:13px}.projects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}',
+    '.project-card{min-width:0;background:var(--panel);border-radius:28px;padding:32px;display:flex;flex-direction:column;align-items:flex-start}.card-top{display:flex;align-items:center;justify-content:space-between;width:100%}.app-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:15px;background:var(--accent);color:white;font-size:28px}.card-index{font-size:12px;color:var(--muted)}.project-card h2{font-size:28px;letter-spacing:-1px;line-height:1.2;margin:24px 0 12px;overflow-wrap:anywhere}.card-description{color:var(--muted);margin:0 0 20px;overflow-wrap:anywhere}.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}.chip{color:var(--muted);font-size:12px}.chip+.chip:before{content:"·";margin-right:8px}.project-link{display:inline-block;margin-top:auto;border-radius:999px;padding:10px 19px;background:var(--accent);color:white;text-decoration:none;font-size:14px}',
+    'footer{margin-top:72px;padding:24px 0 32px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}@media(max-width:600px){.page{width:calc(100% - 32px)}.hero{padding:60px 0 48px}.intro{font-size:19px}.projects{grid-template-columns:1fr;gap:16px}.project-card{padding:26px}.section-head h2{font-size:24px}}',
+    '@media(prefers-color-scheme:dark){:root{--bg:#000;--panel:#1c1c1e;--ink:#f5f5f7;--muted:#a1a1a6;--accent:#2997ff;--line:#424245}.project-link{background:#0071e3}}',
     '</style></head><body><main class="page">',
-    '<nav class="nav"><a class="brand" href="https://shortcuts.plus/">Shortcuts<span>+</span></a><span class="nav-pill">SHORTCUTS SHOWCASE</span></nav>',
-    '<header class="hero"><div class="eyebrow">Apple Shortcuts Showcase</div><h1>A clearer view of<br><em>Shortcuts.</em></h1>',
-    '<p class="intro">A curated presentation of utility-focused shortcuts for Apple devices, with concise project information and direct access to each shortcut.</p></header>',
-    '<section class="preview" aria-label="Quick Look preview"><div class="preview-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="preview-label">SHORTCUTS+ / QUICK LOOK</span></div>',
-    '<div class="preview-content"><div class="preview-kicker">PLATFORM OVERVIEW</div><div class="preview-title">Shortcuts, presented<br>with clarity.</div><p class="preview-copy">A streamlined project index with clear descriptions, categories, and direct shortcut links.</p><div class="preview-lines"><span></span><span></span><span></span></div></div></section>',
-    '<section aria-label="Featured shortcuts"><div class="section-head"><h2 class="section-label">FEATURED SHORTCUTS</h2><span class="count">' + entries.length + ' ITEM' + (entries.length === 1 ? '' : 'S') + '</span></div>',
-    '<div class="projects">' + cards + '</div></section>',
-    '<aside class="quicklook"><h3>Quick Look compatibility</h3><p>The showcase uses a <strong>self-contained static layout</strong>. Its structure and styling are included in the page, minimizing dependencies on external scripts and design assets when displayed in Quick Look.</p></aside>',
-    '<footer><span>APPLE SHORTCUTS · PROJECT DIRECTORY</span><span class="footer-mark">SHORTCUTS+</span></footer>',
+    '<nav class="nav"><a class="brand" href="https://shortcuts.plus/">Shortcuts<span>+</span></a><span class="nav-label">Made for Apple Shortcuts</span></nav>',
+    '<header class="hero"><p class="eyebrow">Shortcuts+</p><h1>Small shortcuts.<br><span>More possibilities.</span></h1><p class="intro">Thoughtful tools for the things you do every day. Built for Apple Shortcuts.</p></header>',
+    '<section aria-label="All shortcuts"><div class="section-head"><h2>Explore the collection.</h2><span class="count">' + entries.length + ' shortcut' + (entries.length === 1 ? '' : 's') + '</span></div><div class="projects">' + cards + '</div></section>',
+    '<footer>Shortcuts+ is independent and is not affiliated with Apple Inc. Review a shortcut’s actions and permissions before running it.</footer>',
     '</main></body></html>'
   ].join("\n");
 
@@ -636,7 +643,7 @@ async function buildPage(url, executionCtx = null, shouldPreload = true) {
 
   if (isShortcutsPlusHome) {
     const menu = await renderShortcutsPlusMenu();
-    const dynamic = extractDynamic(menu.html, fetched.finalUrl);
+    const dynamic = extractDynamic(menu.html, fetched.finalUrl, Infinity);
     const result = responseDictionary(menu.html, dynamic, {
       title: "Shortcuts Plus — All Shortcuts",
       source: fetched.finalUrl,
