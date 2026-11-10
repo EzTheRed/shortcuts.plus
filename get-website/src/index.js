@@ -629,6 +629,11 @@ export default {
       }});
     }
 
+    if (url.hostname.toLowerCase() === "api.shortcuts.plus" && url.pathname === "/api") {
+      if (request.method !== "GET") return json({ error: "Use GET to retrieve the active API list." }, 405);
+      return json(["get-website", "vcf-menu", "posts"]);
+    }
+
     if (url.pathname === "/auth") {
       if (request.method !== "POST") return json({ error: "Use POST with a JSON body containing api." }, 405);
       const contentLength = Number(request.headers.get("content-length") || 0);
