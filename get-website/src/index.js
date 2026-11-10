@@ -405,7 +405,7 @@ function pageTitle(html) {
 }
 
 function pageCacheKey(url) {
-  const key = new URL("https://api.shortcuts.plus/__page-cache-v6");
+  const key = new URL("https://api.shortcuts.plus/__page-cache-v7");
   key.searchParams.set("url", validateTarget(url).href);
   return new Request(key.href, { method: "GET" });
 }
@@ -493,6 +493,130 @@ async function renderShortcutsPlusMenu() {
 
   return { html, count: entries.length, dataUrl };
 }
+
+function parseAssignedJson(html, variableName) {
+  let searchFrom = 0;
+  while (true) {
+    const at = html.indexOf(variableName, searchFrom);
+    if (at < 0) return null;
+    searchFrom = at + variableName.length;
+    const equals = html.indexOf("=", at + variableName.length);
+    if (equals < 0 || equals - at > 80) continue;
+    let start = equals + 1;
+    while (/\s/.test(html[start] || "")) start++;
+    if (html[start] !== "{") continue;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let i = start; i < html.length; i++) {
+      const char = html[i];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (char === "\\") escaped = true;
+        else if (char === '"') inString = false;
+        continue;
+      }
+      if (char === '"') inString = true;
+      else if (char === "{") depth++;
+      else if (char === "}") {
+        depth--;
+        if (depth === 0) {
+          try { return JSON.parse(html.slice(start, i + 1)); } catch { break; }
+        }
+      }
+    }
+  }
+}
+
+function youtubeText(value) {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return "";
+  if (typeof value.simpleText === "string") return value.simpleText;
+  if (Array.isArray(value.runs)) return value.runs.map(run => run?.text || "").join("");
+  return "";
+}
+
+function extractYouTubeVideos(html, pageUrl) {
+  const initial = parseAssignedJson(html, "ytInitialData");
+  if (!initial) return [];
+  const videos = [];
+  const seen = new Set();
+  const rendererKeys = ["videoRenderer", "gridVideoRenderer", "compactVideoRenderer", "playlistVideoRenderer"];
+  const visit = value => {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      for (const child of value) visit(child);
+      return;
+    }
+    for (const key of rendererKeys) {
+      const item = value[key];
+      if (!item || typeof item !== "object") continue;
+      const videoId = typeof item.videoId === "string" ? item.videoId : "";
+      const title = youtubeText(item.title);
+      if (!videoId || !title || seen.has(videoId)) continue;
+      seen.add(videoId);
+
+      const rawThumbs = Array.isArray(item.thumbnail?.thumbnails) ? item.thumbnail.thumbnails : [];
+      let thumbnail = "";
+      for (const candidate of rawThumbs.slice().reverse()) {
+        try {
+          const parsed = new URL(candidate.url, "https://www.youtube.com");
+          if (parsed.protocol === "https:" &&
+              (parsed.hostname === "i.ytimg.com" || parsed.hostname.endsWith(".ytimg.com") ||
+               parsed.hostname.endsWith(".googleusercontent.com"))) {
+            thumbnail = parsed.href;
+            break;
+          }
+        } catch {}
+      }
+
+      const endpoint = item.navigationEndpoint?.commandMetadata?.webCommandMetadata?.url;
+      let href = "/watch?v=" + encodeURIComponent(videoId);
+      if (typeof endpoint === "string" && endpoint.startsWith("/")) href = endpoint;
+      const target = new URL(href, pageUrl).href;
+      const owner = youtubeText(item.ownerText) || youtubeText(item.shortBylineText) ||
+        youtubeText(item.longBylineText) || youtubeText(item.channelName);
+      const views = youtubeText(item.viewCountText) || youtubeText(item.shortViewCountText);
+      const published = youtubeText(item.publishedTimeText);
+      const duration = youtubeText(item.lengthText);
+      videos.push({ videoId, title, thumbnail, target, owner, views, published, duration });
+    }
+    for (const child of Object.values(value)) visit(child);
+  };
+  visit(initial);
+  return videos.slice(0, 48);
+}
+
+function renderYouTubeFeed(videos, pageUrl) {
+  const cards = videos.map(video => {
+    const image = video.thumbnail
+      ? '<img class="thumb" src="' + escapeHtml(video.thumbnail) + '" alt="" referrerpolicy="no-referrer">'
+      : '<div class="thumb placeholder">YouTube</div>';
+    const details = [video.owner, video.views, video.published, video.duration]
+      .filter(Boolean).map(escapeHtml).join(" · ");
+    return '<a class="video" href="' + escapeHtml(video.target) + '">' + image +
+      '<div class="info"><h2>' + escapeHtml(video.title) + '</h2>' +
+      (details ? '<p>' + details + '</p>' : '') + '</div></a>';
+  }).join("");
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light dark"><title>YouTube — Static Feed</title>' +
+    '<style>' +
+    '*{box-sizing:border-box}body{margin:0;background:#fff;color:#0f0f0f;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}' +
+    'header{padding:18px 16px;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;gap:10px;font-weight:750;font-size:19px}' +
+    '.mark{width:28px;height:20px;border-radius:6px;background:#e62117;display:grid;place-items:center;color:white;font-size:12px}' +
+    'main{max-width:920px;margin:0 auto;padding:14px 12px 30px}.notice{font-size:12px;color:#606060;margin:4px 4px 16px}' +
+    '.feed{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:22px 16px}' +
+    '.video{color:inherit;text-decoration:none;min-width:0}.thumb{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#eee;border-radius:10px}' +
+    '.placeholder{display:grid;place-items:center;color:#777}.info{padding:9px 2px}.info h2{font-size:15px;line-height:1.35;font-weight:650;margin:0 0 6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
+    '.info p{font-size:12px;color:#606060;margin:0;line-height:1.5}.footer{margin-top:25px;padding-top:14px;border-top:1px solid #eee;color:#777;font-size:11px}' +
+    '@media(prefers-color-scheme:dark){body{background:#0f0f0f;color:#f1f1f1}header{border-color:#333}.thumb{background:#272727}.info p,.notice,.footer{color:#aaa}.footer{border-color:#333}}' +
+    '</style></head><body><header><span class="mark">▶</span>YouTube</header><main>' +
+    '<p class="notice">Static feed preview · ' + videos.length + ' videos detected</p>' +
+    '<section class="feed">' + cards + '</section><div class="footer">Video details are taken from the page’s publicly available embedded data. Open a video link to continue on YouTube.</div>' +
+    '</main></body></html>';
+}
+
 async function buildPage(url, executionCtx = null, shouldPreload = true) {
   const target = validateTarget(url).href;
   const cache = caches.default;
@@ -529,6 +653,30 @@ async function buildPage(url, executionCtx = null, shouldPreload = true) {
       headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=180" }
     }));
     return result;
+  }
+
+  const youtubeHost = /(^|\.)youtube\.com$/i.test(final.hostname);
+  if (youtubeHost) {
+    const videos = extractYouTubeVideos(fetched.html, fetched.finalUrl);
+    if (videos.length) {
+      const rendered = renderYouTubeFeed(videos, fetched.finalUrl);
+      const dynamic = extractDynamic(rendered, fetched.finalUrl);
+      const result = responseDictionary(rendered, dynamic, {
+        title: "YouTube — Static Feed",
+        source: fetched.finalUrl,
+        finalUrl: fetched.finalUrl,
+        renderer: "youtube-static-feed",
+        videoCount: videos.length,
+        inlinedAssets: 0,
+        skippedAssets: [],
+        cacheHit: false,
+        preloaded: []
+      });
+      await cache.put(key, new Response(JSON.stringify(result), {
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=180" }
+      }));
+      return result;
+    }
   }
 
   const packaged = await packageHtml(fetched.html, fetched.finalUrl);
