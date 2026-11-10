@@ -66,103 +66,19 @@ https://api.shortcuts.plus/vcf-menu?data=
 
 Use **Get Contents of URL** with method **GET**. No request body or headers are needed. The endpoint is GET-only; POST is not supported. Keep the JSON compact because URL length limits apply. Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order.
 
-## Authentication and private token audit
+## Authentication
 
-The API hostname is protected by a Cloudflare Access application named **Shortcuts Plus API - Owner Only**. Its allow policy is restricted to the Cloudflare identity configured for the owner. Requests must pass Cloudflare Access before the Worker will respond.
-
-### Issue a 10-second Basic token
-
-After Cloudflare Access has authenticated the request, send a **POST** request to:
-
-```text
-https://api.shortcuts.plus/auth
-```
-
-Set `Content-Type: application/json` and send this JSON body:
-
-```json
-{
-  "name": "WebPortal+",
-  "api": "get-website"
-}
-```
-
-- `name`: required client/agent name (1–48 allowed characters); use a name generated from relevant client data.
-- `api`: exact endpoint name, either `get-website` or `vcf-menu`.
-
-The response contains an `authorization` value. Send that exact value in the HTTP `Authorization` header on the next request to the selected endpoint. It uses standard HTTP Basic authentication: the client name is the username and a cryptographically random token is the password. The token is valid for **10 seconds**, is scoped to exactly one endpoint, and is **single-use**. Its first successful use immediately invalidates it; if it is not used, it expires after 10 seconds. Request a fresh token for every API call.
-
-The Worker stores only a SHA-256 hash of each token in the private D1 audit database. It never stores the raw token or the Basic header. Tokens are checked and marked used atomically, so a token cannot be replayed.
-
-### Test authentication (separate from production APIs)
-
-Use this endpoint to test the authentication mechanism without registering a production shortcut:
-
-```text
-POST https://api.shortcuts.plus/auth/test
-Content-Type: application/json
-```
-
-Send the exact case-sensitive JSON keys `User` and `Phrase`:
-
-```json
-{
-  "User": "EzTheRed",
-  "Phrase": "<one of the phrases configured for this user>"
-}
-```
-
-The optional `API` property is ignored for test authorization. The response body contains only the Basic authorization value as plain text. A test token has type `TEST` in the audit log, expires after 10 seconds, and can be used once. It is restricted to the test-verification endpoint and cannot authorize `/get-website` or `/vcf-menu`.
-
-Verify it immediately with:
-
-```text
-POST https://api.shortcuts.plus/auth/test/verify
-Authorization: <the authorization value returned by /auth/test>
-```
-
-A successful verification returns `authenticated: true`. The test phrases are stored as a Cloudflare Worker secret in hashed form, not in this repository or the audit database. Cloudflare Access is still required for both requests.
-
-### Production shortcut allowlist
-
-Production `POST /auth` accepts only the exact API names `get-website` and `vcf-menu`, and only shortcut names registered in the D1 `allowed_shortcuts` table. The table currently has no registered shortcuts, so production token requests will return HTTP 403 until a shortcut is added. Test authentication does not use this allowlist.
-
-To register a shortcut, run this SQL in the `shortcuts-auth-audit` D1 database:
-
-```sql
-INSERT INTO allowed_shortcuts (name, enabled, created_at)
-VALUES ('WebPortal+', 1, unixepoch());
-```
-
-Use the exact shortcut name in the `name` property when requesting a production token. To disable a name without deleting it:
-
-```sql
-UPDATE allowed_shortcuts SET enabled = 0 WHERE name = 'WebPortal+';
-```
-
-### View recent token audit entries
-
-```text
-GET https://api.shortcuts.plus/auth/logs?limit=30
-```
-
-This endpoint is also protected by Cloudflare Access and returns the most recent token issuance records for the authenticated owner. Each record includes the client name, API scope (null for test tokens), token type (`SHORTCUT` or `TEST`), issue/expiry/use timestamps, and a short SHA-256 fingerprint. It does not reveal usable credentials.
-
-### Important client note
-
-Cloudflare Access identity authentication is separate from the short-lived Basic token. A non-browser client such as Apple Shortcuts must already have a valid Cloudflare Access session/assertion available for each request. The 10-second Basic token does not replace or bypass Cloudflare Access. Do not put either credential in a URL; send credentials in request headers.
+The token-issuing and token-audit routes have been removed. The Worker no longer provides any `/auth` endpoints. The `/get-website` and `/vcf-menu` endpoints still require a valid, unused, unexpired Basic token in the `Authorization` request header. Tokens must be provisioned by a separate trusted system; this Worker cannot issue or display them.
 
 ## Suggested Apple Shortcuts flow
 
-1. Ask for or receive the starting URL.
-2. Build the client name from relevant Shortcuts data (for example, a fixed shortcut/agent label such as `WebPortal+`).
-3. Use **Get Contents of URL** for `https://api.shortcuts.plus/auth`, set method to **POST**, set `Content-Type: application/json`, and provide a JSON body with `name` and `api: get-website`.
-4. Parse the response and copy its `authorization` value.
-5. Immediately call `https://api.shortcuts.plus/get-website?url=<URL-encoded-url>` with the returned value in the HTTP `Authorization` header. Do not delay: the token expires after 10 seconds and works once.
-6. Use **Get Dictionary from Input** on the webpage response.
-7. Get the `file` value, save it with an `.html` extension, and use **Quick Look** to preview it.
-8. Get the `dynamic` array and use **Choose from List** with the item labels.
-9. When a link is chosen, repeat steps 3–8 with `api: get-website` and that item's `target`. For a GET form, collect its fields and build the target URL with those values as query parameters before repeating the request.
+1. Obtain a valid Basic authorization value from your separate trusted token-provisioning system.
+2. Request `https://api.shortcuts.plus/get-website?url=<URL-encoded-url>` using **Get Contents of URL** with method **GET**.
+3. Set the HTTP `Authorization` header to the supplied Basic authorization value.
+4. Use **Get Dictionary from Input** on the webpage response.
+5. Get the `file` value, save it with an `.html` extension, and use **Quick Look** to preview it.
+6. Get the `dynamic` array and use **Choose from List** with the item labels.
+7. When a link is chosen, repeat the request with that item's `target`. For a GET form, collect its fields and build the target URL with those values as query parameters before repeating the request.
 
 Shortcuts handles choices and form prompts natively. Quick Look is only the display surface: it does not send a callback when an HTML element is tapped.
 
