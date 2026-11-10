@@ -4,6 +4,7 @@ const MAX_ASSET_BYTES = 1024 * 1024;
 const MAX_TOTAL_ASSET_BYTES = 4 * 1024 * 1024;
 const MAX_ASSETS = 24;
 const MAX_REDIRECTS = 5;
+const TRANSPARENT_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
@@ -463,6 +464,7 @@ function vcardResponse(items) {
       "VERSION:3.0",
       "N;CHARSET=UTF-8:;" + title + ";;;",
       "ORG;CHARSET=UTF-8:" + subtitle,
+      "PHOTO;ENCODING=b;TYPE=PNG:" + TRANSPARENT_PNG_BASE64,
       "FN;CHARSET=UTF-8:" + title,
       "NOTE;CHARSET=UTF-8:item_" + (i + 1),
       "UID:urn:uuid:" + crypto.randomUUID(),
