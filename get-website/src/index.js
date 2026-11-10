@@ -465,6 +465,7 @@ function vcardResponse(items) {
       "N;CHARSET=UTF-8:;" + title + ";;;",
       "ORG;CHARSET=UTF-8:" + subtitle,
       "FN;CHARSET=UTF-8:" + title,
+      "NOTE;CHARSET=UTF-8:item_" + (i + 1),
       "UID:urn:uuid:" + crypto.randomUUID(),
       "END:VCARD"
     ];
