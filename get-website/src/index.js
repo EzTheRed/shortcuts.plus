@@ -13,7 +13,7 @@ function json(data, status = 200) {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-methods": "GET, OPTIONS",
       "access-control-allow-headers": "Content-Type",
       "x-content-type-options": "nosniff"
     }
@@ -343,8 +343,8 @@ function responseDictionary(file, dynamic, metadata = {}) {
       ...metadata
     },
     instructions: {
-      interaction: "Use the dynamic array to build native Shortcuts menus and prompts. Send the selected item id and any form values to POST /action.",
-      actionEndpoint: "https://api.shortcuts.plus/action"
+      interaction: "Use the dynamic array to build native Shortcuts menus and prompts. For a selected link, request /get-website again using its target URL. For a GET form, collect the listed field values, add them to the target URL as query parameters, then request /get-website with that URL.",
+      endpoint: "https://api.shortcuts.plus/get-website"
     }
   };
 }
@@ -486,17 +486,6 @@ function vcardResponse(items) {
   });
 }
 
-function appendQuery(target, values) {
-  const u = validateTarget(target);
-  for (const [key, value] of Object.entries(values || {})) {
-    if (Array.isArray(value)) {
-      for (const v of value) u.searchParams.append(key, String(v));
-    } else if (value !== undefined && value !== null && value !== "") {
-      u.searchParams.set(key, String(value));
-    }
-  }
-  return u.href;
-}
 
 export default {
   async fetch(request, env, executionCtx) {
@@ -504,7 +493,7 @@ export default {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: {
         "access-control-allow-origin": "*",
-        "access-control-allow-methods": "GET, POST, OPTIONS",
+        "access-control-allow-methods": "GET, OPTIONS",
         "access-control-allow-headers": "Content-Type",
         "access-control-max-age": "86400"
       }});
@@ -512,14 +501,13 @@ export default {
 
     if (url.pathname === "/" && request.method === "GET") {
       return json({
-        name: "Shortcuts Plus Dynamic Page API",
+        name: "Shortcuts Plus Website API",
         status: "ok",
         endpoints: {
-          initial: "/get-website?url=https%3A%2F%2Fexample.com",
-          action: "POST /action with { url, actionId, values? }",
+          website: "GET /get-website?url=<URL-encoded-public-website>",
           vcfMenu: "GET /vcf-menu?data=<URL-encoded-JSON-object>"
         },
-        response: { file: "HTML string", dynamic: "native Shortcuts interaction definitions", metadata: "page information" }
+        response: { file: "packaged HTML string", dynamic: "preloaded link and GET-form definitions", metadata: "page information" }
       });
     }
 
@@ -547,43 +535,6 @@ export default {
       }
     }
 
-    if (url.pathname === "/action") {
-      if (request.method !== "POST") return json({ error: "Use POST for actions." }, 405);
-      try {
-        const body = await request.json();
-        if (!body || typeof body !== "object") return json({ error: "A JSON request body is required." }, 400);
-        const sourceUrl = validateTarget(body.url).href;
-        const actionId = String(body.actionId || "");
-        if (!/^link_\d+$/.test(actionId) && !/^form_\d+$/.test(actionId)) {
-          return json({ error: "Unknown or unsupported actionId." }, 400);
-        }
-
-        const currentPage = await fetchPage(validateTarget(sourceUrl));
-        const dynamic = extractDynamic(currentPage.html, currentPage.finalUrl);
-        const selected = dynamic.find(item => item.id === actionId);
-        if (!selected) return json({ error: "That action is not available on the current page." }, 404);
-
-        let destination;
-        if (selected.type === "link") {
-          destination = selected.target;
-        } else if (selected.type === "form") {
-          const supplied = body.values && typeof body.values === "object" ? body.values : {};
-          const allowed = new Set(selected.fields.map(field => field.name));
-          const values = {};
-          for (const [key, value] of Object.entries(supplied)) {
-            if (allowed.has(key)) values[key] = value;
-          }
-          destination = appendQuery(selected.target, values);
-        } else {
-          return json({ error: "This action type is not supported." }, 400);
-        }
-
-        return json(await buildPage(destination, executionCtx));
-      } catch (error) {
-        return json({ error: error instanceof Error ? error.message : "Unable to process action." }, 400);
-      }
-    }
-
-    return json({ error: "Not found", expectedPaths: ["/get-website", "/action", "/vcf-menu"] }, 404);
+    return json({ error: "Not found", expectedPaths: ["/get-website", "/vcf-menu"] }, 404);
   }
 };
