@@ -405,7 +405,7 @@ function pageTitle(html) {
 }
 
 function pageCacheKey(url) {
-  const key = new URL("https://api.shortcuts.plus/__page-cache-v3");
+  const key = new URL("https://api.shortcuts.plus/__page-cache-v4");
   key.searchParams.set("url", validateTarget(url).href);
   return new Request(key.href, { method: "GET" });
 }
