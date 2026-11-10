@@ -2,5 +2,8 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "shortcuts-get-website",
   "main": "src/index.js",
-  "compatibility_date": "2026-11-09"
+  "compatibility_date": "2026-11-09",
+  "services": [
+    { "binding": "REGISTRY", "service": "shortcuts-registry" }
+  ]
 }
