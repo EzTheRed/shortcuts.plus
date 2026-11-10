@@ -5,7 +5,7 @@ const MAX_TOTAL_ASSET_BYTES = 4 * 1024 * 1024;
 const MAX_ASSETS = 24;
 const MAX_REDIRECTS = 5;
 const TRANSPARENT_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=";
-const API_IDS = Object.freeze({ GET_WEBSITE: "get-website", VCF_MENU: "vcf-menu", POSTS: "posts" });
+const API_IDS = Object.freeze({ GET_WEBSITE: "get-website", VCF_MENU: "vcf-menu" });
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
@@ -574,85 +574,6 @@ async function buildPage(url, executionCtx = null, shouldPreload = true) {
 
 
 
-async function createPost(request, env) {
-  if (!env.AUTH_DB) return json({ error: "Post storage is unavailable." }, 503);
-  const valid = await consumeBasicToken(request, env, API_IDS.POSTS);
-  if (!valid) return json({ error: "A valid, unused, unexpired Basic authentication token for the posts API is required." }, 401);
-
-  let body;
-  try { body = await request.json(); } catch { return json({ error: "Request body must be valid JSON." }, 400); }
-  const name = typeof body?.name === "string" ? body.name.trim() : "";
-  const content = typeof body?.content === "string" ? body.content.trim() : "";
-  const poster = typeof body?.poster === "string" ? body.poster.trim() : "";
-  if (!name || !content || !poster) {
-    return json({ error: "Required fields: name, content, poster. Date and time are generated automatically in UTC." }, 400);
-  }
-  if (name.length > 200 || poster.length > 100 || content.length > 20000) {
-    return json({ error: "Limits: name 200 characters, poster 100 characters, content 20,000 characters." }, 413);
-  }
-
-  let contentType = "text";
-  if (/^https?:\/\//i.test(content)) {
-    let link;
-    try { link = new URL(content); } catch { return json({ error: "The supplied link is invalid." }, 400); }
-    if (link.protocol !== "https:" || !["icloud.com", "www.icloud.com"].includes(link.hostname.toLowerCase()) ||
-        !/^\/shortcuts\/[A-Za-z0-9-]+\/?$/.test(link.pathname)) {
-      return json({ error: "Only iCloud Shortcut sharing links (https://www.icloud.com/shortcuts/...) are accepted as links." }, 400);
-    }
-    contentType = "icloud-shortcut";
-  }
-  const now = new Date();
-  const createdAt = now.toISOString();
-  const postDate = createdAt.slice(0, 10);
-  const postTime = createdAt.slice(11, 19);
-  try {
-    const result = await env.AUTH_DB.prepare(
-      "INSERT INTO posts (name, content, content_type, post_date, post_time, poster, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id"
-    ).bind(name, content, contentType, postDate, postTime, poster, createdAt).first();
-    if (!result) return json({ error: "The post could not be saved." }, 500);
-    return json({
-      id: result.id,
-      url: "https://posts.shortcuts.plus/" + result.id,
-      name, content, content_type: contentType,
-      date: postDate, time: postTime, timezone: "UTC",
-      created_at: createdAt, poster
-    }, 201);
-  } catch {
-    return json({ error: "Unable to save the post right now." }, 503);
-  }
-}
-
-function postRecord(row) {
-  return {
-    id: row.id, name: row.name, content: row.content,
-    content_type: row.content_type, date: row.post_date,
-    time: row.post_time, timezone: "UTC",
-    created_at: row.created_at, poster: row.poster,
-    url: "https://posts.shortcuts.plus/" + row.id
-  };
-}
-
-async function getPost(request, env, id) {
-  const row = await env.AUTH_DB.prepare(
-    "SELECT id, name, content, content_type, post_date, post_time, poster, created_at FROM posts WHERE id = ?"
-  ).bind(id).first();
-  return row ? json(postRecord(row)) : json({ error: "Post not found.", id }, 404);
-}
-
-async function getAllPosts(request, env) {
-  const limit = Math.min(100, Math.max(1, Number.parseInt(new URL(request.url).searchParams.get("limit") || "50", 10) || 50));
-  const offset = Math.max(0, Number.parseInt(new URL(request.url).searchParams.get("offset") || "0", 10) || 0);
-  const rows = await env.AUTH_DB.prepare(
-    "SELECT id, name, content, content_type, post_date, post_time, poster, created_at FROM posts ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?"
-  ).bind(limit, offset).all();
-  const count = await env.AUTH_DB.prepare("SELECT COUNT(*) AS total FROM posts").first();
-  return json({
-    posts: (rows.results || []).map(postRecord),
-    pagination: { limit, offset, total: count?.total || 0, has_more: offset + (rows.results || []).length < (count?.total || 0) },
-    sort: "created_at_desc"
-  });
-}
-
 function escapeVCard(value) {
   return String(value ?? "")
     .replace(/\\/g, "\\\\")
@@ -744,11 +665,7 @@ export default {
       const directory = [
         "POST https://api.shortcuts.plus/auth",
         "POST https://api.shortcuts.plus/get-website",
-        "POST https://api.shortcuts.plus/vcf-menu",
-        "POST https://posts.shortcuts.plus/auth",
-        "POST https://posts.shortcuts.plus/",
-        "GET https://posts.shortcuts.plus/all",
-        "GET https://posts.shortcuts.plus/{id}"
+        "POST https://api.shortcuts.plus/vcf-menu"
       ];
       return new Response("[\n  " + directory.map(path => JSON.stringify(path)).join(",\n  ") + "\n]", {
         status: 200,
@@ -768,45 +685,12 @@ export default {
       let body;
       try { body = await request.json(); } catch { return json({ error: "Request body must be valid JSON." }, 400); }
       const api = typeof body?.api === "string" ? body.api.trim() : "";
-      const apiIds = { "get-website": API_IDS.GET_WEBSITE, "vcf-menu": API_IDS.VCF_MENU, "posts": API_IDS.POSTS };
-      if (!Object.prototype.hasOwnProperty.call(apiIds, api)) return json({ error: "api must be get-website, vcf-menu, or posts." }, 400);
+      const apiIds = { "get-website": API_IDS.GET_WEBSITE, "vcf-menu": API_IDS.VCF_MENU };
+      if (!Object.prototype.hasOwnProperty.call(apiIds, api)) return json({ error: "api must be get-website or vcf-menu." }, 400);
       try {
         const authorization = await issuePublicBasicToken(env, apiIds[api]);
         return new Response(authorization, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "Authorization, Content-Type", "x-content-type-options": "nosniff" }});
       } catch { return json({ error: "Unable to issue a token right now." }, 503); }
-    }
-
-    const isPostsHost = url.hostname.toLowerCase() === "posts.shortcuts.plus";
-    if (isPostsHost) {
-      if (url.pathname === "/auth") {
-        if (request.method !== "POST") return json({ error: "Use POST with JSON { api: \"posts\" }." }, 405);
-        let body;
-        try { body = await request.json(); } catch { return json({ error: "Request body must be valid JSON." }, 400); }
-        if (body?.api !== "posts") return json({ error: "api must be posts." }, 400);
-        try {
-          const authorization = await issuePublicBasicToken(env, API_IDS.POSTS);
-          return new Response(authorization, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*", "x-content-type-options": "nosniff" }});
-        } catch { return json({ error: "Unable to issue a token right now." }, 503); }
-      }
-      if (url.pathname === "/all" && request.method === "GET") {
-        try { return await getAllPosts(request, env); }
-        catch { return json({ error: "Unable to retrieve posts right now." }, 503); }
-      }
-      const postMatch = url.pathname.match(/^\/(\\d+)$/);
-      if (postMatch && request.method === "GET") {
-        try { return await getPost(request, env, Number(postMatch[1])); }
-        catch { return json({ error: "Unable to retrieve this post right now." }, 503); }
-      }
-      if (url.pathname === "/" && request.method === "POST") return createPost(request, env);
-      if (url.pathname === "/" && request.method === "GET") {
-        return json({ name: "Shortcuts Plus Posts API", status: "ok", endpoints: {
-          authenticate: "POST /auth with JSON { api: posts }",
-          publish: "POST / with Basic token and JSON { name, content, poster }",
-          all: "GET /all?limit=50&offset=0",
-          byId: "GET /{id}"
-        }, timestamp: "Date and time are generated automatically in UTC." });
-      }
-      return json({ error: "Not found", expectedPaths: ["/auth", "/", "/all", "/{id}"] }, 404);
     }
 
     if (url.pathname === "/get-website" || url.pathname === "/vcf-menu") {
@@ -821,7 +705,7 @@ export default {
         name: "Shortcuts Plus Website API",
         status: "ok",
         endpoints: {
-          auth: "POST /auth with JSON {api}; returns a short-lived API-ID-bound Basic token (get-website, vcf-menu, or posts)",
+          auth: "POST /auth with JSON {api}; returns a short-lived API-ID-bound Basic token (get-website or vcf-menu)",
           website: "POST /get-website with JSON { url: <public-http-or-https-url> } (Basic token required)",
           vcfMenu: "POST /vcf-menu with a JSON object mapping contact titles to subtitles (Basic token required)"
         },
