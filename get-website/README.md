@@ -85,7 +85,7 @@ Because `/auth` is public, anyone can request a token. The name is an audit labe
 
 ## Suggested Apple Shortcuts flow
 
-1. Obtain a valid Basic authorization value from your separate trusted token-provisioning system.
+1. Call `POST https://api.shortcuts.plus/auth` with JSON `{ "name": "WebPortal+", "api": "get-website" }` and use the plain-text Basic authorization value returned.
 2. Request `https://api.shortcuts.plus/get-website?url=<URL-encoded-url>` using **Get Contents of URL** with method **GET**.
 3. Set the HTTP `Authorization` header to the supplied Basic authorization value.
 4. Use **Get Dictionary from Input** on the webpage response.
