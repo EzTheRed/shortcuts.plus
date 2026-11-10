@@ -64,7 +64,7 @@ For Apple Shortcuts, use **Get Contents of URL** with method **POST**, set the r
 
 The public `POST /auth` endpoint issues a short-lived, single-use Basic authorization value. It does not require Cloudflare Access or an identity login.
 
-Send JSON containing only `api` (`get-website`, `vcf-menu`, or `posts`). The response body is only the Basic authorization value as plain text. Tokens expire after 10 seconds, are bound to the selected API's ID, and can be used once.
+Send JSON containing only `api` (`get-website` or `vcf-menu`). The response body is only the Basic authorization value as plain text. Tokens expire after 10 seconds, are bound to the selected API's ID, and can be used once.
 
 Example request:
 
@@ -106,61 +106,15 @@ The Worker accepts only public HTTP/HTTPS destinations, blocks local/private/res
 
 ## Active API directory
 
-`GET https://api.shortcuts.plus/api` returns a plain-text, single-array list of every active endpoint, including its HTTP method.
+`GET https://api.shortcuts.plus/api` returns a plain-text, single-array list of every active endpoint, including its HTTP method. The active endpoints are:
 
-The directory currently lists:
+- `POST /auth` — issue a short-lived token for an active API.
+- `POST /get-website` — package a public webpage.
+- `POST /vcf-menu` — generate a vCard menu file.
 
-- `get-website` — webpage packaging.
-- `vcf-menu` — downloadable vCard menu generation.
-- `posts` — public post publishing and retrieval.
-
-
-
-## Public Posts API
-
-The Posts API is served from `https://posts.shortcuts.plus`. Posts are public to read. Publishing requires a short-lived, single-use Basic token scoped specifically to the `posts` API.
-
-### Authentication
-
-Send:
-
-```http
-POST https://posts.shortcuts.plus/auth
-Content-Type: application/json
-
-{"api":"posts"}
-```
-
-The response body is the Basic authorization value as plain text. Use it immediately; it expires after 10 seconds and can only be used once.
-
-### Publish a post
-
-```http
-POST https://posts.shortcuts.plus/
-Authorization: Basic <token>
-Content-Type: application/json
-
-{
-  "name": "Post title",
-  "content": "The text of the post",
-  "poster": "Display name"
-}
-```
-
-All three fields are required. The API also accepts an iCloud Shortcut sharing link in `content`, but rejects other URLs. Accepted links use the `https://www.icloud.com/shortcuts/...` or `https://icloud.com/shortcuts/...` format. Other content is stored as plain text.
-
-The server automatically assigns an incrementing numeric ID and records the UTC date, time, and ISO-8601 creation timestamp. Do not send date or time fields.
-
-A successful response includes the permanent URL, for example `https://posts.shortcuts.plus/1`.
-
-### Read posts
-
-- `GET https://posts.shortcuts.plus/all` — public list, newest first.
-- `GET https://posts.shortcuts.plus/all?limit=25&offset=0` — paginated list (maximum 100 per request).
-- `GET https://posts.shortcuts.plus/1` — retrieve post ID 1.
-
-Each post includes `id`, `name`, `content`, `content_type`, `date`, `time`, `timezone` (always `UTC`), `created_at`, `poster`, and `url`. The list response also includes pagination metadata and its sort order.
+The former Posts API has been retired. No publishing, listing, or individual-post endpoints are active.
 
 ## Test
+
 
 `POST https://api.shortcuts.plus/get-website` with JSON body `{ "url": "https://example.com" }`
