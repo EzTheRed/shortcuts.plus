@@ -64,7 +64,7 @@ For a link, send its `link_N` id and omit `values`. For a form, send the `form_N
 }
 ```
 
-Send the object as the raw JSON request body with `Content-Type: application/json`. Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order. The legacy `POST /get-vcf` path remains available as an alias. Each property name is written to both the `FN` (formatted name) and `N` (name) properties; its value is written to `ORG` (company). Text properties use `CHARSET=UTF-8`. Each contact also gets a `NOTE` identifier (`item_1`, `item_2`, and so on) so Shortcuts can distinguish duplicate titles. Contacts are separated by a blank line. A valid 1×1 transparent PNG is embedded in the `PHOTO` property to suppress the default initials/monogram avatar in contact views that honor the photo; it is not a visible picture.
+Send the object as the raw JSON request body with `Content-Type: application/json`. Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order. Each property name is written to both the `FN` (formatted name) and `N` (name) properties; its value is written to `ORG` (company). Text properties use `CHARSET=UTF-8`. Each contact also gets a `NOTE` identifier (`item_1`, `item_2`, and so on) so Shortcuts can distinguish duplicate titles. Contacts are separated by a blank line. A valid 1×1 transparent PNG is embedded in the `PHOTO` property to suppress the default initials/monogram avatar in contact views that honor the photo; it is not a visible picture.
 
 ## Suggested Apple Shortcuts flow
 
