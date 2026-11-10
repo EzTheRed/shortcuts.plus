@@ -5,6 +5,7 @@ const MAX_TOTAL_ASSET_BYTES = 4 * 1024 * 1024;
 const MAX_ASSETS = 24;
 const MAX_REDIRECTS = 5;
 const TRANSPARENT_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=";
+const API_IDS = Object.freeze({ GET_WEBSITE: "get-website", VCF_MENU: "vcf-menu" });
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
@@ -26,7 +27,7 @@ async function sha256Hex(value) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function consumeBasicToken(request, env, scope, tokenType = "SHORTCUT") {
+async function consumeBasicToken(request, env, apiId, tokenType = "SHORTCUT") {
   if (!env.AUTH_DB) return false;
   const header = request.headers.get("authorization") || "";
   const match = header.match(/^Basic\s+([A-Za-z0-9+/]+=*)$/i);
@@ -41,15 +42,15 @@ async function consumeBasicToken(request, env, scope, tokenType = "SHORTCUT") {
   }
   const separator = decoded.indexOf(":");
   if (separator < 1) return false;
-  const name = decoded.slice(0, separator);
+  const suppliedApiId = decoded.slice(0, separator);
   const token = decoded.slice(separator + 1);
-  if (!/^[A-Za-z0-9._+-]{1,48}$/.test(name) || !token) return false;
+  if (suppliedApiId !== apiId || !token) return false;
   const tokenHash = await sha256Hex(token);
   const now = Math.floor(Date.now() / 1000);
   try {
     const consumed = await env.AUTH_DB.prepare(
-      "UPDATE auth_tokens SET used_at = ? WHERE token_hash = ? AND name = ? AND scope = ? AND token_type = ? AND expires_at > ? AND used_at IS NULL AND revoked = 0 RETURNING id"
-    ).bind(now, tokenHash, name, scope, tokenType, now).first();
+      "UPDATE auth_tokens SET used_at = ? WHERE token_hash = ? AND scope = ? AND token_type = ? AND expires_at > ? AND used_at IS NULL AND revoked = 0 RETURNING id"
+    ).bind(now, tokenHash, apiId, tokenType, now).first();
     return Boolean(consumed);
   } catch {
     return false;
@@ -57,7 +58,7 @@ async function consumeBasicToken(request, env, scope, tokenType = "SHORTCUT") {
 }
 
 
-async function issuePublicBasicToken(env, name, scope) {
+async function issuePublicBasicToken(env, apiId) {
   if (!env.AUTH_DB) throw new Error("Token storage is unavailable.");
   const random = new Uint8Array(32);
   crypto.getRandomValues(random);
@@ -66,8 +67,8 @@ async function issuePublicBasicToken(env, name, scope) {
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = now + 10;
   const id = crypto.randomUUID();
-  await env.AUTH_DB.prepare("INSERT INTO auth_tokens (id, token_hash, name, identity_email, scope, issued_at, expires_at, token_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(id, tokenHash, name, "public", scope, now, expiresAt, "SHORTCUT").run();
-  return "Basic " + btoa(name + ":" + token);
+  await env.AUTH_DB.prepare("INSERT INTO auth_tokens (id, token_hash, name, identity_email, scope, issued_at, expires_at, token_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(id, tokenHash, apiId, "public", apiId, now, expiresAt, "SHORTCUT").run();
+  return "Basic " + btoa(apiId + ":" + token);
 }
 function isPrivateOrLocalHost(hostname) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
@@ -549,24 +550,23 @@ export default {
     }
 
     if (url.pathname === "/auth") {
-      if (request.method !== "POST") return json({ error: "Use POST with a JSON body containing name and api." }, 405);
+      if (request.method !== "POST") return json({ error: "Use POST with a JSON body containing api." }, 405);
       const contentLength = Number(request.headers.get("content-length") || 0);
       if (contentLength > 2048) return json({ error: "Request body is too large." }, 413);
       let body;
       try { body = await request.json(); } catch { return json({ error: "Request body must be valid JSON." }, 400); }
-      const name = typeof body?.name === "string" ? body.name.trim() : "";
       const api = typeof body?.api === "string" ? body.api.trim() : "";
-      if (!/^[A-Za-z0-9._+-]{1,48}$/.test(name)) return json({ error: "Invalid name." }, 400);
-      const scopes = { "get-website": "/get-website", "vcf-menu": "/vcf-menu" };
-      if (!Object.prototype.hasOwnProperty.call(scopes, api)) return json({ error: "api must be either get-website or vcf-menu." }, 400);
+      const apiIds = { "get-website": API_IDS.GET_WEBSITE, "vcf-menu": API_IDS.VCF_MENU };
+      if (!Object.prototype.hasOwnProperty.call(apiIds, api)) return json({ error: "api must be either get-website or vcf-menu." }, 400);
       try {
-        const authorization = await issuePublicBasicToken(env, name, scopes[api]);
+        const authorization = await issuePublicBasicToken(env, apiIds[api]);
         return new Response(authorization, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "Authorization, Content-Type", "x-content-type-options": "nosniff" }});
       } catch { return json({ error: "Unable to issue a token right now." }, 503); }
     }
     if (url.pathname === "/get-website" || url.pathname === "/vcf-menu") {
       if (request.method !== "GET") return json({ error: "Only GET requests are supported for this endpoint." }, 405);
-      const valid = await consumeBasicToken(request, env, url.pathname);
+      const apiId = url.pathname === "/get-website" ? API_IDS.GET_WEBSITE : API_IDS.VCF_MENU;
+      const valid = await consumeBasicToken(request, env, apiId);
       if (!valid) return json({ error: "A valid, unused, unexpired Basic authentication token for this API is required." }, 401);
     }
 
@@ -575,7 +575,7 @@ export default {
         name: "Shortcuts Plus Website API",
         status: "ok",
         endpoints: {
-          auth: "POST /auth with JSON {name, api}; returns a short-lived Basic token",
+          auth: "POST /auth with JSON {api}; returns a short-lived API-ID-bound Basic token",
           website: "GET /get-website?url=<URL-encoded-public-website> (Basic token required)",
           vcfMenu: "GET /vcf-menu?data=<URL-encoded-JSON-object> (Basic token required)"
         },
