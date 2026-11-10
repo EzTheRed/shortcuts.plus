@@ -546,7 +546,7 @@ async function getAllPosts(request, env) {
 }
 \nfunction escapeVCard(value) {
   return String(value ?? "")
-    .replace(/\/g, "\\\\")
+    .replace(/\\/g, "\\\\")
     .replace(/\r\n|\r|\n/g, "\\n")
     .replace(/,/g, "\\,")
     .replace(/;/g, "\\;");
