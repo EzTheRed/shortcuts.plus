@@ -66,6 +66,36 @@ https://api.shortcuts.plus/vcf-menu?data=
 
 Use **Get Contents of URL** with method **GET**. No request body or headers are needed. The endpoint is GET-only; POST is not supported. Keep the JSON compact because URL length limits apply. Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order.
 
+## Authentication and private token audit
+
+The API hostname is protected by a Cloudflare Access application named **Shortcuts Plus API - Owner Only**. Its allow policy is restricted to the Cloudflare identity configured for the owner. Requests must pass Cloudflare Access before the Worker will respond.
+
+### Issue a 10-second Basic token
+
+After Cloudflare Access has authenticated the request, call:
+
+```text
+GET https://api.shortcuts.plus/auth?name=WebPortal%2B&api=get-website
+```
+
+The `name` parameter is required and identifies the client in the audit log. The `api` parameter must be `get-website` or `vcf-menu`.
+
+The response contains an `authorization` value. Send that exact value in the HTTP `Authorization` header on the next request to the selected endpoint. It uses standard HTTP Basic authentication: the client name is the username and a cryptographically random token is the password. The token is valid for **10 seconds**, is scoped to exactly one endpoint, and is **single-use**. Request a fresh token for every API call.
+
+The Worker stores only a SHA-256 hash of each token in the private D1 audit database. It never stores the raw token or the Basic header. Tokens are checked and marked used atomically, so a token cannot be replayed.
+
+### View recent token audit entries
+
+```text
+GET https://api.shortcuts.plus/auth/logs?limit=30
+```
+
+This endpoint is also protected by Cloudflare Access and returns the most recent token issuance records for the authenticated owner. Each record includes the client name, API scope, issue/expiry/use timestamps, and a short SHA-256 fingerprint. It does not reveal usable credentials.
+
+### Important client note
+
+Cloudflare Access identity authentication is separate from the short-lived Basic token. A non-browser client such as Apple Shortcuts must already have a valid Cloudflare Access session/assertion available for each request. The 10-second Basic token does not replace or bypass Cloudflare Access. Do not put either credential in a URL; send credentials in request headers.
+
 ## Suggested Apple Shortcuts flow
 
 1. Ask for or receive the starting URL.
