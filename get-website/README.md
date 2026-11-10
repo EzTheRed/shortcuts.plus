@@ -70,22 +70,23 @@ Use **Get Contents of URL** with method **GET**. No request body or headers are 
 
 The public `POST /auth` endpoint issues a short-lived, single-use Basic authorization value. It does not require Cloudflare Access or an identity login.
 
-Send JSON with `name` (1-48 characters; letters, numbers, `.`, `_`, `+`, and `-`) and `api` (`get-website` or `vcf-menu`). The response body is only the Basic authorization value as plain text. Tokens expire after 10 seconds, are scoped to the selected API, and can be used once.
+Send JSON containing only `api` (`get-website` or `vcf-menu`). The response body is only the Basic authorization value as plain text. Tokens expire after 10 seconds, are bound to the selected API's ID, and can be used once.
 
 Example request:
 
 ```json
 {
-  "name": "WebPortal+",
   "api": "get-website"
 }
 ```
 
-Because `/auth` is public, anyone can request a token. The name is an audit label, not proof of identity. Keep issued authorization values private and use them immediately.
+Each protected API has its own fixed ID. The Basic authorization username contains that API ID, and the API verifies that the ID matches its own before consuming the token. A token issued for one API cannot authorize another API. No caller-provided name is requested or used.
+
+Because `/auth` is public, anyone can request a token. Keep issued authorization values private and use them immediately.
 
 ## Suggested Apple Shortcuts flow
 
-1. Call `POST https://api.shortcuts.plus/auth` with JSON `{ "name": "WebPortal+", "api": "get-website" }` and use the plain-text Basic authorization value returned.
+1. Call `POST https://api.shortcuts.plus/auth` with JSON `{ "api": "get-website" }` and use the plain-text Basic authorization value returned.
 2. Request `https://api.shortcuts.plus/get-website?url=<URL-encoded-url>` using **Get Contents of URL** with method **GET**.
 3. Set the HTTP `Authorization` header to the supplied Basic authorization value.
 4. Use **Get Dictionary from Input** on the webpage response.
