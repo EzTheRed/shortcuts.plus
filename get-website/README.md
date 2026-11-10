@@ -6,7 +6,7 @@ Cloudflare Worker base URL: `https://api.shortcuts.plus`
 
 ### 1. Get a webpage
 
-`GET /get-website?url=<URL-encoded-public-http-or-https-url>`
+`POST /get-website`
 
 This is the only webpage endpoint. It returns a JSON dictionary:
 
@@ -42,13 +42,13 @@ Example response shape:
 }
 ```
 
-To follow a link, have Shortcuts request `/get-website` again using that item's `target` as the URL parameter. For a GET form, collect the listed field values in Shortcuts, add them to the form's `target` as URL query parameters using each field's `name`, then request `/get-website` with the resulting URL. The API itself does not receive interaction selections or submit forms.
+To follow a link, have Shortcuts send another `POST /get-website` request with JSON `{ "url": "<selected target>" }`. For a GET form, collect the listed field values in Shortcuts, add them to the form's `target` as URL query parameters using each field's `name`, then request `/get-website` with the resulting URL. The API itself does not receive interaction selections or submit forms.
 
 ### 2. Generate a vCard menu file
 
-`GET /vcf-menu?data=<URL-encoded-JSON>`
+`POST /vcf-menu`
 
-Pass a URL-encoded JSON object in the `data` query parameter. Each property name becomes a contact title, and its string value becomes the subtitle:
+Send the JSON object directly as the POST request body. Each property name becomes a contact title, and its string value becomes the subtitle:
 
 ```json
 {
@@ -58,13 +58,7 @@ Pass a URL-encoded JSON object in the `data` query parameter. Each property name
 }
 ```
 
-For Apple Shortcuts, use **URL Encode** on the JSON text, then append the result to:
-
-```text
-https://api.shortcuts.plus/vcf-menu?data=
-```
-
-Use **Get Contents of URL** with method **GET** and include the API's Basic token in the `Authorization` header. No request body is needed. The endpoint is GET-only; POST is not supported. Keep the JSON compact because URL length limits apply. Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order.
+For Apple Shortcuts, use **Get Contents of URL** with method **POST**, set the request body to **JSON**, and include the API's Basic token in the `Authorization` header. No URL encoding or query parameter is needed. Returns one downloadable `shortcuts-menu.vcf` file containing one separate vCard contact per object property, in the same order.
 
 ## Authentication
 
@@ -87,12 +81,12 @@ Because `/auth` is public, anyone can request a token. Keep issued authorization
 ## Suggested Apple Shortcuts flow
 
 1. Call `POST https://api.shortcuts.plus/auth` with JSON `{ "api": "get-website" }` and use the plain-text Basic authorization value returned.
-2. Request `https://api.shortcuts.plus/get-website?url=<URL-encoded-url>` using **Get Contents of URL** with method **GET**.
+2. Request `https://api.shortcuts.plus/get-website` using **Get Contents of URL** with method **POST** and JSON body `{ "url": "https://example.com" }`.
 3. Set the HTTP `Authorization` header to the supplied Basic authorization value.
 4. Use **Get Dictionary from Input** on the webpage response.
 5. Get the `file` value, save it with an `.html` extension, and use **Quick Look** to preview it.
 6. Get the `dynamic` array and use **Choose from List** with the item labels.
-7. When a link is chosen, repeat the request with that item's `target`. For a GET form, collect its fields and build the target URL with those values as query parameters before repeating the request.
+7. When a link is chosen, repeat the POST request with that item's `target` as the JSON `url` value. For a GET form, collect its fields and build the target URL with those values as query parameters, then send that URL as the JSON `url` value.
 
 Shortcuts handles choices and form prompts natively. Quick Look is only the display surface: it does not send a callback when an HTML element is tapped.
 
@@ -110,15 +104,15 @@ The Worker accepts only public HTTP/HTTPS destinations, blocks local/private/res
 
 ## Active API directory
 
-`GET https://api.shortcuts.plus/api` returns a JSON-only API catalog. Each top-level key is an API folder containing its base URL, purpose, authentication requirements, and endpoint definitions. Endpoint entries document methods, paths, parameters, request bodies, and response content types.
+`GET https://api.shortcuts.plus/api` returns a plain-text, single-array list of every active endpoint, including its HTTP method.
 
-The catalog is the machine-readable reference for the active APIs. It currently describes:
+The directory currently lists:
 
 - `get-website` — webpage packaging.
 - `vcf-menu` — downloadable vCard menu generation.
 - `posts` — public post publishing and retrieval.
 
-The response also includes shared conventions for authentication and errors. Use each endpoint's `url` or `url_template` rather than assuming every API shares the same hostname.
+
 
 ## Public Posts API
 
@@ -167,4 +161,4 @@ Each post includes `id`, `name`, `content`, `content_type`, `date`, `time`, `tim
 
 ## Test
 
-`https://api.shortcuts.plus/get-website?url=https%3A%2F%2Fexample.com`
+`POST https://api.shortcuts.plus/get-website` with JSON body `{ "url": "https://example.com" }`
