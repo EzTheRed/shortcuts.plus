@@ -34,7 +34,8 @@
     A.initTheme();
     try {
       const params = new URLSearchParams(location.search);
-      const id = params.get("shortcut");
+      const pathMatch = location.pathname.match(/^\/shortcut\/([^/]+)\/?$/);
+      const id = pathMatch ? decodeURIComponent(pathMatch[1]) : params.get("shortcut");
       let item;
       if (id?.trim()) {
         item = await A.getItem(id.trim());
