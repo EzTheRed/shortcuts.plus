@@ -123,4 +123,4 @@ html:not(.theme-ready) *,html:not(.theme-ready) *::before,html:not(.theme-ready)
 .shortcut-meta{font-size:.85rem;opacity:.75;margin:.3rem 0 .65rem}.shortcut-unavailable{display:inline-flex;align-items:center;padding:.55rem .8rem;border-radius:9px;border:1px solid currentColor;opacity:.65;font-size:.85rem;font-weight:600}
 
 /* Light-blue Apple Shortcuts-inspired project icon */
-.collection-icon,.icon-bubble{background:#bde8ff;color:#087bc4}.collection-icon svg,.icon-bubble svg{width:24px;height:24px}
+.collection-icon.dev-shortcut-icon,.icon-bubble.dev-shortcut-icon{background:#bde8ff;color:#087bc4}.collection-icon svg,.icon-bubble svg{width:24px;height:24px}
