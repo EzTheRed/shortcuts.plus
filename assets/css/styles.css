@@ -176,3 +176,36 @@ body{background:radial-gradient(ellipse at 12% 8%,rgba(104,172,255,.17),transpar
 .nav-shell,.simple-card,.collection-card,.shortcut-card,.card,.empty,.search{position:relative;isolation:isolate}
 .nav-shell::before,.simple-card::before,.collection-card::before,.shortcut-card::before,.card::before,.empty::before,.search::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;background:linear-gradient(130deg,rgba(255,255,255,.34),transparent 35%,rgba(255,255,255,.1) 75%,rgba(255,255,255,.3));box-shadow:inset 2px 2px 3px rgba(255,255,255,.48),inset -3px -4px 8px rgba(50,72,120,.1)}
 @media(prefers-reduced-transparency:reduce){.nav-shell,.simple-card,.collection-card,.shortcut-card,.card,.empty,.search,.section-picker-menu,.button,.icon-btn{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}}
+
+
+/* Refractive glass upgrade: SVG displacement on backdrop where supported.
+   Safari may not support SVG filters on backdrop-filter; it falls back to layered lensing. */
+:root{--lens-refraction:url("/assets/icons/liquid-refraction.svg#liquid-refract")}
+.nav-shell,.simple-card,.collection-card,.shortcut-card,.card,.empty,.search,.button,.icon-btn,.section-picker-menu,.toast{
+  position:relative;
+  isolation:isolate;
+  background:linear-gradient(155deg,rgba(255,255,255,.30),rgba(255,255,255,.035) 47%,rgba(255,255,255,.17));
+  border:1px solid rgba(255,255,255,.52);
+  box-shadow:inset 0 2px 2px rgba(255,255,255,.72),inset 2px 0 2px rgba(255,255,255,.24),inset -2px -3px 5px rgba(41,74,137,.16),0 16px 36px rgba(35,57,106,.16);
+  backdrop-filter:var(--lens-refraction) blur(3px) saturate(170%);
+  -webkit-backdrop-filter:blur(10px) saturate(175%);
+}
+.nav-shell::before,.simple-card::before,.collection-card::before,.shortcut-card::before,.card::before,.empty::before,.search::before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(125deg,rgba(255,255,255,.45),transparent 24%,transparent 76%,rgba(255,255,255,.22));
+  box-shadow:inset 0 3px 4px rgba(255,255,255,.42),inset 0 -4px 7px rgba(62,102,164,.12);
+}
+html[data-theme="dark"] .nav-shell,html[data-theme="dark"] .simple-card,html[data-theme="dark"] .collection-card,html[data-theme="dark"] .shortcut-card,html[data-theme="dark"] .card{
+  background:linear-gradient(145deg,rgba(110,133,185,.24),rgba(29,43,74,.19) 55%,rgba(89,112,163,.19));
+  border-color:rgba(255,255,255,.24);
+}
+@supports (backdrop-filter:url("/assets/icons/liquid-refraction.svg#liquid-refract")){
+ .nav-shell,.simple-card,.collection-card,.shortcut-card,.card,.empty,.search,.button,.icon-btn,.section-picker-menu,.toast{
+  backdrop-filter:url("/assets/icons/liquid-refraction.svg#liquid-refract") blur(3px) saturate(170%);
+ }
+}
+@media(prefers-reduced-transparency:reduce){
+ .nav-shell,.simple-card,.collection-card,.shortcut-card,.card,.empty,.search,.button,.icon-btn,.section-picker-menu,.toast{
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--surface-strong)!important;
+ }
+}
