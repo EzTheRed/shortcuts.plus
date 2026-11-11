@@ -10,7 +10,7 @@
     const source = sourceURL
       ? `<a href="${esc(sourceURL)}" target="_blank" rel="noopener noreferrer">${esc(item.source)}</a>`
       : esc(item.source);
-    const action = item.link
+    const action = item.link && !["Planning","In Development","Testing"].includes(item.status)
       ? `<a class="button button-blue" href="${link}" target="_blank" rel="noopener noreferrer">${item.linkType === "source" ? "Open source listing" : "Get Shortcut"} ↗</a><button class="button" type="button" data-copy="${link}">Copy link</button>`
       : "";
     document.title = `${item.title} — Shortcuts+`;
@@ -22,7 +22,7 @@
       <h1>${esc(item.title)}</h1>
       ${item.badge ? `<p class="badge">${esc(item.badge)}</p>` : ""}
       <p>${esc(item.desc || "No description available.")}</p>
-      ${item.version ? `<p class="detail-version">Version ${esc(item.version)}</p>` : ""}
+      ${item.version ? `<p class="detail-version">Version ${esc(item.version)}</p>` : ""}${item.status ? `<p class="detail-version">Status: ${esc(item.status)}</p>` : ""}${!action ? `<p class="shortcut-unavailable">Preview only · Download not available</p>` : ""}
       <div class="hero-actions">${action}</div>
       ${item.source && item.source !== "UNKNOWN" ? `<p class="detail-source">Source: ${source}</p>` : ""}
       ${item.dateAdded ? `<p class="detail-date">Added ${esc(A.formatDate(item.dateAdded))}</p>` : ""}
