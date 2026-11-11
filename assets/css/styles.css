@@ -118,3 +118,6 @@ html:not(.theme-ready) *,html:not(.theme-ready) *::before,html:not(.theme-ready)
 .library-page .card{border:0;border-radius:24px;padding:28px}
 .detail-card{border:0;box-shadow:none}
 @media(max-width:640px){.simple-heading{padding:60px 0 32px}.simple-heading>p:last-of-type{font-size:19px}.simple-library{margin-top:48px}.simple-list-heading h2{font-size:24px}.simple-card-list{grid-template-columns:1fr;gap:16px}.simple-card{padding:26px}.simple-card h3{font-size:26px}.simple-card-actions{gap:18px}.library-page{padding-top:36px}}
+
+/* Shortcut registry version and preview states */
+.shortcut-meta{font-size:.85rem;opacity:.75;margin:.3rem 0 .65rem}.shortcut-unavailable{display:inline-flex;align-items:center;padding:.55rem .8rem;border-radius:9px;border:1px solid currentColor;opacity:.65;font-size:.85rem;font-weight:600}
