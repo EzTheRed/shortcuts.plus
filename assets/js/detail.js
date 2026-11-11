@@ -17,7 +17,7 @@
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.content = item.desc || "View this shortcut in the Shortcuts+ library.";
     $("#app").innerHTML = `<article class="card detail-card">
-      <div class="card-top"><div class="icon-bubble">${A.iconFor(item)}</div></div>
+      <div class="card-top"><div class="icon-bubble ${["Planning","In Development","Testing"].includes(item.status)?"dev-shortcut-icon":""}">${A.iconFor(item)}</div></div>
       <p class="eyebrow">${item.category.map(esc).join(" · ")}</p>
       <h1>${esc(item.title)}</h1>
       ${item.badge ? `<p class="badge">${esc(item.badge)}</p>` : ""}
