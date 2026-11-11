@@ -22,7 +22,7 @@
       <h1>${esc(item.title)}</h1>
       ${item.badge ? `<p class="badge">${esc(item.badge)}</p>` : ""}
       <p>${esc(item.desc || "No description available.")}</p>
-      ${item.version ? `<p class="detail-version">Version ${esc(item.version)}</p>` : ""}${item.status ? `<p class="detail-version">Status: ${esc(item.status)}</p>` : ""}${!action ? `<p class="shortcut-unavailable">Preview only · Download not available</p>` : ""}
+      ${item.version && !["Planning","In Development","Testing"].includes(item.status) ? `<p class="detail-version">Version ${esc(item.version)}</p>` : ""}${item.status ? `<p class="detail-version">Status: ${esc(item.status)}</p>` : ""}${!action ? `<p class="shortcut-unavailable">Preview only · Download not available</p>` : ""}
       <div class="hero-actions">${action}</div>
       ${item.source && item.source !== "UNKNOWN" ? `<p class="detail-source">Source: ${source}</p>` : ""}
       ${item.dateAdded ? `<p class="detail-date">Added ${esc(A.formatDate(item.dateAdded))}</p>` : ""}
