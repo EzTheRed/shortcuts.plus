@@ -124,3 +124,5 @@ html:not(.theme-ready) *,html:not(.theme-ready) *::before,html:not(.theme-ready)
 
 /* Light-blue Apple Shortcuts-inspired project icon */
 .collection-icon.dev-shortcut-icon,.icon-bubble.dev-shortcut-icon{background:#bde8ff;color:#087bc4}.collection-icon svg,.icon-bubble svg{width:24px;height:24px}
+
+.dev-initial{display:inline-block;font-size:24px;font-weight:700;line-height:1;letter-spacing:-.04em;color:#087bc4}
