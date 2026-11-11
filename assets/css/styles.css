@@ -163,3 +163,16 @@ body{background:radial-gradient(ellipse at 12% 8%,rgba(104,172,255,.17),transpar
 @media(max-width:640px){.nav-shell{top:7px;width:calc(100% - 16px);border-radius:20px}.nav{padding-inline:12px}}
 @media(prefers-reduced-transparency:reduce){.nav-shell,.simple-card,.collection-card,.shortcut-card,.card,.empty,.search,.button,.icon-btn{background:var(--surface-strong);backdrop-filter:none;-webkit-backdrop-filter:none}}
 @media(prefers-reduced-motion:reduce){.simple-card,.collection-card,.shortcut-card,.button,.icon-btn{transition:none!important;transform:none!important}}
+
+
+/* Refractive material: SVG displacement deforms the pixels sampled BEHIND glass.
+   Unsupported browsers fall back to translucent frosted material. */
+@supports (backdrop-filter: url("#liquid-refraction")) {
+.nav-shell,.simple-card,.collection-card,.shortcut-card,.card,.empty,.search,.section-picker-menu,.button,.icon-btn {
+  -webkit-backdrop-filter:blur(2px) url("#liquid-refraction") saturate(160%);
+  backdrop-filter:blur(2px) url("#liquid-refraction") saturate(160%);
+}}
+/* Squashed/stretched optical rim, separate from readable foreground content */
+.nav-shell,.simple-card,.collection-card,.shortcut-card,.card,.empty,.search{position:relative;isolation:isolate}
+.nav-shell::before,.simple-card::before,.collection-card::before,.shortcut-card::before,.card::before,.empty::before,.search::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;background:linear-gradient(130deg,rgba(255,255,255,.34),transparent 35%,rgba(255,255,255,.1) 75%,rgba(255,255,255,.3));box-shadow:inset 2px 2px 3px rgba(255,255,255,.48),inset -3px -4px 8px rgba(50,72,120,.1)}
+@media(prefers-reduced-transparency:reduce){.nav-shell,.simple-card,.collection-card,.shortcut-card,.card,.empty,.search,.section-picker-menu,.button,.icon-btn{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}}
