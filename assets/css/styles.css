@@ -126,3 +126,18 @@ html:not(.theme-ready) *,html:not(.theme-ready) *::before,html:not(.theme-ready)
 .collection-icon.dev-shortcut-icon,.icon-bubble.dev-shortcut-icon{background:#bde8ff;color:#087bc4}.collection-icon svg,.icon-bubble svg{width:24px;height:24px}
 
 .dev-initial{display:inline-block;font-size:24px;font-weight:700;line-height:1;letter-spacing:-.04em;color:#087bc4}
+
+
+/* Shortcuts+ Liquid Glass-inspired visual system — reversible stylesheet layer */
+:root{--bg:#edf2fa;--surface:rgba(255,255,255,.54);--surface-strong:rgba(255,255,255,.76);--card:rgba(255,255,255,.55);--border:rgba(255,255,255,.76);--border-light:rgba(255,255,255,.6);--shadow:0 16px 44px rgba(39,66,112,.13),inset 0 1px 0 rgba(255,255,255,.8);--nav-height:76px}
+html[data-theme="dark"] body{--bg:#0b1426;--surface:rgba(38,52,76,.55);--surface-strong:rgba(49,64,91,.72);--card:rgba(39,53,77,.57);--border:rgba(255,255,255,.18);--border-light:rgba(255,255,255,.13);--shadow:0 20px 50px rgba(0,0,0,.27),inset 0 1px 0 rgba(255,255,255,.12)}
+body{background:radial-gradient(ellipse 65% 42% at 10% 10%,rgba(125,180,255,.26),transparent),radial-gradient(ellipse 65% 45% at 90% 40%,rgba(189,159,255,.2),transparent),var(--bg);background-attachment:fixed}
+.nav-shell{top:12px;margin:0 auto;width:min(1100px,calc(100% - 24px));height:var(--nav-height);border:1px solid var(--border);border-radius:26px;background:var(--surface-strong);box-shadow:var(--shadow);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%)}
+.nav{padding-inline:22px}.nav-link,.icon-btn,.section-picker-button{border-radius:999px}.nav-link{padding:9px 15px}.nav-link.active,.nav-link:hover,.icon-btn:hover{background:var(--surface-strong)}
+.simple-card,.collection-card,.shortcut-card,.card,.empty,.section-picker-menu,.search,.simple-search,.library-search,.section-picker,.toast,.simple-filter,.button,.button-blue,.shortcut-unavailable{border-radius:24px;border:1px solid var(--border);background:var(--card);box-shadow:var(--shadow);backdrop-filter:blur(22px) saturate(170%);-webkit-backdrop-filter:blur(22px) saturate(170%)}
+.button,.button-blue{border-radius:999px}.button-blue{background:linear-gradient(135deg,rgba(0,113,227,.9),rgba(70,144,249,.85));color:#fff;border-color:rgba(255,255,255,.38)}
+input,.section-picker-button{background:transparent;box-shadow:none}.simple-card,.collection-card,.shortcut-card,.card{transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease}
+@media(hover:hover){.simple-card:hover,.collection-card:hover,.shortcut-card:hover,.card:hover{transform:translateY(-4px);box-shadow:0 22px 55px rgba(38,67,120,.18),inset 0 1px rgba(255,255,255,.6)}}
+@media(max-width:640px){:root{--nav-height:62px}.nav-shell{top:8px;border-radius:21px;width:calc(100% - 16px)}.nav{padding-inline:14px}.simple-card,.collection-card,.shortcut-card{border-radius:22px}}
+@supports not ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){.nav-shell,.simple-card,.collection-card,.shortcut-card,.card,.search,.section-picker-menu{background:var(--surface-strong)}}
+@media(prefers-reduced-motion:reduce){.simple-card,.collection-card,.shortcut-card,.card{transition:none!important;transform:none!important}}
