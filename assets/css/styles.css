@@ -330,3 +330,44 @@ html[data-theme="dark"] .nav-shell,html[data-theme="dark"] .nav-links.open,html[
 @media(prefers-reduced-transparency:reduce){
  .nav-shell,.nav-links.open,.section-picker-menu{background:var(--plain-panel)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 }
+
+
+/* Springy squash/stretch: menus and their contents travel together. */
+@keyframes sp-glass-bounce{
+  0%{opacity:0;transform:translate3d(0,-19px,0) scale3d(.88,.68,1)}
+  30%{opacity:1;transform:translate3d(0,7px,0) scale3d(1.065,1.15,1)}
+  52%{transform:translate3d(0,-5px,0) scale3d(.965,.91,1)}
+  70%{transform:translate3d(0,3px,0) scale3d(1.022,1.055,1)}
+  84%{transform:translate3d(0,-1px,0) scale3d(.992,.984,1)}
+  100%{opacity:1;transform:translate3d(0,0,0) scale3d(1,1,1)}
+}
+@keyframes sp-glass-content{
+  0%{opacity:.3;transform:translateY(-9px) scaleY(.84)}
+  32%{opacity:1;transform:translateY(5px) scaleY(1.11)}
+  58%{transform:translateY(-3px) scaleY(.95)}
+  78%{transform:translateY(1px) scaleY(1.025)}
+  100%{opacity:1;transform:none}
+}
+.section-picker.open .section-picker-menu{
+ animation:sp-glass-bounce .76s cubic-bezier(.2,.72,.25,1) both!important;
+ transform-origin:top right;will-change:transform,opacity
+}
+.section-picker.open .section-picker-menu > *{
+ animation:sp-glass-content .76s cubic-bezier(.2,.72,.25,1) both;
+ transform-origin:top center
+}
+@media(max-width:640px){
+ .nav-links.open{
+  animation:sp-glass-bounce .78s cubic-bezier(.2,.72,.25,1) both!important;
+  transform-origin:top center;will-change:transform,opacity
+ }
+ .nav-links.open > *{
+  animation:sp-glass-content .78s cubic-bezier(.2,.72,.25,1) both;
+  transform-origin:top center
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .nav-links.open,.nav-links.open > *,.section-picker.open .section-picker-menu,.section-picker.open .section-picker-menu > *{
+  animation:none!important;transform:none!important;will-change:auto!important
+ }
+}
