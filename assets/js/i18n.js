@@ -62,7 +62,13 @@ function picker(){
  const select=document.createElement("select");select.id="sp-language";select.setAttribute("aria-label","Language");select.title="Language";
  for(const [code,name] of Object.entries(languages)){const o=document.createElement("option");o.value=code;o.textContent=name;select.append(o)}
  select.value=selected;select.addEventListener("change",()=>{try{localStorage.setItem("sp-lang",select.value)}catch(e){}location.reload()});
- label.append(select);nav.insertBefore(label,nav.querySelector("#theme-btn"));
+ const button=document.createElement("button");
+ button.type="button";button.className="sp-translate-button";button.setAttribute("aria-label","Choose website language");button.title="Choose website language";
+ button.innerHTML='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h12M11 5v3M7 8c.3 4 3.2 7.1 7 9M14 8c-.6 3.7-3.5 7.4-7.8 9"/><path d="m14 21 4-10 4 10M15.4 18h5.2"/></svg>';
+ button.addEventListener("click",()=>{try{if(typeof select.showPicker==="function"){select.showPicker();return}}catch(e){}select.focus();select.click()});
+ label.append(button,select);
+ const category=document.querySelector(".simple-filter .section-picker");
+ if(category){category.insertAdjacentElement("afterend",label)}else{nav.insertBefore(label,nav.querySelector("#theme-btn"))}
 }
 function start(){
  if(window.i18next){window.i18next.init({lng:selected,fallbackLng:"en-US",resources,initImmediate:false,interpolation:{escapeValue:false}})}
