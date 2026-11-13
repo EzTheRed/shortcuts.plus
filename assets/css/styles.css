@@ -627,3 +627,15 @@ html[data-theme="dark"] .nav-shell{background:#161617!important}
  .nav-links.open{top:calc(100% + 4px);padding:12px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+
+/* Original shortcut artwork: preserve the full blue SVG tile at every size. */
+.collection-icon:has(.project-svg-icon),.icon-bubble:has(.project-svg-icon){
+ display:grid!important;place-items:center!important;overflow:hidden!important;
+ padding:0!important;background:transparent!important;border:0!important;
+ box-shadow:none!important;border-radius:19px!important;color:inherit!important
+}
+.project-svg-icon{display:block;width:100%!important;height:100%!important;object-fit:contain!important;aspect-ratio:1/1}
+.collection-icon:has(.project-svg-icon){width:76px!important;height:76px!important}
+.icon-bubble:has(.project-svg-icon){width:76px!important;height:76px!important}
+.detail-card .icon-bubble:has(.project-svg-icon){width:104px!important;height:104px!important;border-radius:24px!important}
