@@ -7,5 +7,6 @@ async function start(){A.initTheme();try{items=await A.getItems();render()}catch
 $("#search")?.addEventListener("input",event=>{query=event.target.value;render()});
 $("#section-picker-button")?.addEventListener("click",()=>{const picker=$("#section-picker");picker.classList.toggle("open");$("#section-picker-button").setAttribute("aria-expanded",String(picker.classList.contains("open")))});
 $("#section-picker-menu")?.addEventListener("click",event=>{const button=event.target.closest("[data-category]");if(!button)return;category=button.dataset.category;$("#section-picker").classList.remove("open");$("#section-picker-button").setAttribute("aria-expanded","false");render()});
+document.addEventListener("click",event=>{const picker=$("#section-picker");if(picker&&!picker.contains(event.target)){picker.classList.remove("open");$("#section-picker-button")?.setAttribute("aria-expanded","false")}});
 $("#app")?.addEventListener("click",event=>{const button=event.target.closest("[data-copy]");if(button)A.copy(button.dataset.copy)});
 }start()})();
