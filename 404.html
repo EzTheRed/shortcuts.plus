@@ -20,13 +20,17 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Shortcut details — Shortcuts+">
 <meta name="twitter:description" content="View, open, and copy a shortcut from the Shortcuts+ library.">
-<link rel="stylesheet" href="https://shortcuts.plus/assets/css/styles.css?v=20261110-9">
-<script src="https://shortcuts.plus/assets/js/app.js?v=20261110-9" defer></script>
-<script src="https://shortcuts.plus/assets/js/detail.js?v=20261110-9" defer></script>
+<style id="initial-theme">html{background:#fff;color-scheme:light}html[data-theme="dark"]{background:#000;color-scheme:dark}html[data-theme="dark"] body{background:#000}</style>
+<script>(function(){var v;try{v=localStorage.getItem("sp-theme")}catch(e){}if(v!=="light"&&v!=="dark")v=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=v;document.querySelector('meta[name="theme-color"]')?.setAttribute("content",v==="dark"?"#000000":"#ffffff")})();</script>
+<link rel="stylesheet" href="https://shortcuts.plus/assets/css/styles.css?v=20261113-apple1">
+<script src="https://cdn.jsdelivr.net/npm/i18next@25.8.0/dist/umd/i18next.min.js" defer></script>
+<script src="https://shortcuts.plus/assets/js/i18n.js?v=20261113-header1" defer></script>
+<script src="https://shortcuts.plus/assets/js/app.js?v=20261113-i18n1" defer></script>
+<script src="https://shortcuts.plus/assets/js/detail.js?v=20261113-apple1" defer></script>
 </head>
-<body class="light" data-page="detail"><svg aria-hidden="true" width="0" height="0" style="position:absolute;pointer-events:none"><defs><filter id="liquid-refraction" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.035" numOctaves="2" seed="8" result="waves"/><feDisplacementMap in="SourceGraphic" in2="waves" scale="42" xChannelSelector="R" yChannelSelector="G"/></filter></defs></svg>
-<header class="nav-shell"><div class="wrap nav"><a class="logo" href="https://shortcuts.plus/" aria-label="Shortcuts+ home">Shortcuts<span class="logo-plus">+</span></a><button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="Open menu" aria-expanded="false"><span class="menu-lines" aria-hidden="true"></span></button><nav class="nav-links" id="nav-links" aria-label="Main navigation"><a class="nav-link" href="https://shortcuts.plus/#library">Library</a><a class="nav-link" href="https://shortcuts.plus/#howto">How it works</a><button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="Switch to dark mode" title="Dark mode"></button></nav></div></header>
+<body data-page="detail">
+<header class="nav-shell"><div class="wrap nav"><a class="logo" href="https://shortcuts.plus/" aria-label="Shortcuts+ home">Shortcuts<span class="logo-plus">+</span></a><button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="Open menu" aria-expanded="false"><span class="menu-lines" aria-hidden="true"></span></button><nav class="nav-links" id="nav-links" aria-label="Main navigation"><a class="nav-link" href="https://shortcuts.plus/">Home</a><a class="nav-link" href="https://shortcuts.plus/library.html">Library</a><button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="Switch to dark mode" title="Dark mode"></button></nav></div></header>
 <main class="detail-main"><div class="wrap detail-wrap"><a class="detail-back" href="https://shortcuts.plus/#library">← Back to shortcuts</a><div id="app"><div class="empty"><strong>Loading shortcut…</strong><span>Opening the selected entry.</span></div></div></div></main>
 <footer class="site-footer"><div class="wrap footer-inner"><div class="footer-top"><a class="footer-brand" href="https://shortcuts.plus/">Shortcuts<span>+</span></a><span class="footer-year">© 2026</span></div><p class="footer-copy">© 2026 Ezrah M. D. Kelly. The Shortcuts+ website design, code, and original site content are © 2026 Ezrah M. D. Kelly unless explicitly stated otherwise. This notice does not claim ownership of individual shortcuts unless expressly stated on their entries.</p><p class="footer-disclaimer">Shortcuts+ is an independent website and is not affiliated with, endorsed by, or sponsored by Apple Inc. Apple, Shortcuts, iPhone, and related trademarks belong to their respective owners. Always review a shortcut’s actions and permissions before running it.</p></div></footer><div class="toast" id="toast" role="status" aria-live="polite"></div>
-<script src="/assets/js/liquid-webgl.js" defer></script></body>
+</body>
 </html>
