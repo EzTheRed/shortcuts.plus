@@ -494,3 +494,15 @@ html[data-theme="dark"] .sp-language-picker select{background-color:rgba(255,255
  .simple-filter .sp-language-picker select{max-width:130px}
  .nav-links.open .sp-language-picker{margin:9px 10px 5px;max-width:calc(100% - 20px)}
 }
+
+
+/* Apple.com-inspired understated translation control: icon-only, no button chrome. */
+.sp-translate-button,.sp-translate-button:hover{
+ border:0!important;box-shadow:none!important;background:transparent!important;
+ color:var(--muted)!important;border-radius:10px!important;
+ width:32px;height:36px;padding:5px;opacity:.82;
+}
+.sp-translate-button:hover{opacity:1;color:var(--text)!important}
+.sp-translate-button:active{transform:scale(.96);opacity:.72}
+.sp-translate-button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.sp-translate-button svg{width:19px;height:19px;stroke-width:1.65}
