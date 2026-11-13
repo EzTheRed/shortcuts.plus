@@ -209,3 +209,66 @@ html[data-theme="dark"] .nav-shell,html[data-theme="dark"] .simple-card,html[dat
   backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--surface-strong)!important;
  }
 }
+
+
+/* 2026-11-13: Quick Look/mobile readability and interaction repair.
+   Keep glass on surfaces, never on the controls inside them. */
+html,body{max-width:100%;overflow-x:clip}
+body{background-attachment:scroll}
+.nav-shell{z-index:100;isolation:auto}
+.nav-shell .nav{position:relative;z-index:2}
+.nav-shell::before{z-index:0}
+.nav-links{z-index:110}
+.simple-main{position:relative;z-index:1}
+.simple-heading{padding:clamp(32px,6vw,68px) 0 28px}
+.simple-heading h1{font-size:clamp(34px,7vw,62px);line-height:1.1}
+.simple-heading>p:last-of-type{font-size:clamp(15px,2.5vw,18px);color:var(--muted);margin-top:16px}
+.simple-heading .button{margin-top:20px}
+.simple-library{margin-top:clamp(26px,5vw,48px)}
+.simple-search{max-width:100%;height:50px}
+.simple-filter{position:relative;z-index:20;isolation:auto;background:transparent;border-radius:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.simple-filter .section-picker{position:relative;isolation:auto;background:transparent;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;border-radius:0}
+.simple-filter .section-picker-button{position:relative;z-index:2;min-height:42px;padding:7px 13px;background:var(--surface-strong);box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.simple-filter .section-picker-menu{position:absolute;top:calc(100% + 6px);right:0;left:auto;min-width:min(220px,calc(100vw - 40px));max-width:calc(100vw - 32px);max-height:min(300px,50dvh);overflow-y:auto;z-index:120;isolation:auto;background:var(--surface-strong);border:1px solid var(--border-light);box-shadow:0 14px 32px rgba(24,43,73,.2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.section-picker:not(.open) .section-picker-menu{display:none}
+.simple-card-list{gap:16px}
+.simple-card{gap:18px;padding:22px;min-height:0;justify-content:flex-start;background:var(--surface-strong)}
+.simple-card h3{font-size:clamp(19px,3vw,24px)}
+.simple-card p{font-size:14px;color:var(--muted);line-height:1.5}
+.simple-card-actions{margin-top:auto;gap:14px}
+.simple-card-actions .simple-get{color:#fff;background:#0071e3;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;border:0}
+.collection-icon{flex:none}
+.nav-shell,.simple-card,.search,.section-picker-menu{backdrop-filter:blur(12px) saturate(145%);-webkit-backdrop-filter:blur(12px) saturate(145%)}
+@media(max-width:640px){
+ :root{--nav-height:60px}
+ .wrap{width:calc(100% - 32px)}
+ .nav-shell{top:6px;width:calc(100% - 16px);min-height:var(--nav-height);border-radius:20px}
+ .nav{min-height:var(--nav-height);padding-inline:16px}
+ .nav-links{position:absolute;top:calc(100% + 8px);left:0;right:0;display:none;gap:0;align-items:stretch;padding:8px 12px;border:1px solid var(--border-light);border-radius:18px;background:var(--surface-strong);box-shadow:0 12px 30px rgba(24,43,73,.18);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+ .nav-links.open{display:flex;flex-direction:column}
+ .nav-link{font-size:15px;padding:11px 13px;border-top:0}
+ .theme-btn{margin:8px 0 2px;align-self:flex-start}
+ .simple-heading{padding:38px 0 26px}
+ .simple-heading .eyebrow{font-size:12px;margin-bottom:10px}
+ .simple-heading h1{font-size:clamp(33px,9vw,46px)}
+ .simple-heading>p:last-of-type{font-size:16px;line-height:1.45;margin-top:14px}
+ .simple-heading .button{margin-top:18px}
+ .simple-library{margin-top:30px}
+ .simple-list-heading{align-items:flex-start;gap:8px}
+ .simple-list-heading h2{font-size:22px}
+ .simple-filter{padding:10px 0 14px}
+ .simple-filter .section-picker{border:0}
+ .simple-filter .section-picker-button{width:auto;justify-content:space-between;padding:7px 13px}
+ .simple-filter .section-picker-menu{position:absolute;right:0;left:auto;margin:0;max-height:260px}
+ .simple-card-list{grid-template-columns:1fr;gap:12px}
+ .simple-card{padding:20px;gap:14px;border-radius:20px}
+ .simple-card h3{font-size:21px}
+ .simple-card p{font-size:14px;margin-top:8px}
+ .collection-icon{margin-bottom:12px}
+ .simple-card-actions{gap:14px;flex-wrap:wrap}
+ .simple-card-actions a,.simple-card-actions button{font-size:13px}
+ .site-footer{position:relative;z-index:1}
+}
+@media(prefers-reduced-transparency:reduce){
+ .nav-shell,.simple-card,.search,.section-picker-menu{background:var(--surface-strong)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+}
