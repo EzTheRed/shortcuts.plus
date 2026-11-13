@@ -1,5 +1,5 @@
 (()=>{'use strict';
-if(matchMedia('(prefers-reduced-transparency: reduce)').matches)return;
+if(matchMedia('(prefers-reduced-transparency: reduce)').matches || matchMedia('(max-width: 640px)').matches)return;
 const canvas=document.createElement('canvas');canvas.id='liquid-webgl';canvas.setAttribute('aria-hidden','true');
 Object.assign(canvas.style,{position:'fixed',inset:'0',width:'100%',height:'100%',pointerEvents:'none',zIndex:'0'});
 document.body.prepend(canvas);
