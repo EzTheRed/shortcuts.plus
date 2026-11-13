@@ -477,3 +477,20 @@ html[data-theme="dark"] .section-picker-menu{background:rgba(42,43,52,.86);borde
 .sp-language-picker select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 html[data-theme="dark"] .sp-language-picker select{background-color:rgba(255,255,255,.09)}
 @media(max-width:640px){.nav-links.open .sp-language-picker{margin:9px 10px 5px;max-width:calc(100% - 20px)}.sp-language-picker select{font-size:14px;min-height:40px}}
+
+
+/* Language switcher beside category dropdown, with recognizable translate icon. */
+.sp-language-picker{display:inline-flex;align-items:center;gap:6px;max-width:none;min-width:0}
+.sp-translate-button{display:grid;place-items:center;flex:none;width:40px;height:40px;border:1px solid var(--plain-line);border-radius:50%;background:var(--plain-panel);color:var(--blue);cursor:pointer;transition:background .16s,transform .16s}
+.sp-translate-button:hover{background:var(--accent-soft)}
+.sp-translate-button:active{transform:scale(.94)}
+.sp-translate-button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.sp-language-picker select{max-width:160px}
+.simple-filter .sp-language-picker{margin-inline-start:8px}
+.simple-filter .sp-language-picker select{max-width:135px}
+@media(max-width:640px){
+ .simple-filter{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+ .simple-filter .sp-language-picker{margin-inline-start:0}
+ .simple-filter .sp-language-picker select{max-width:130px}
+ .nav-links.open .sp-language-picker{margin:9px 10px 5px;max-width:calc(100% - 20px)}
+}
