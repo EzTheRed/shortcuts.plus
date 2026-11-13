@@ -469,3 +469,11 @@ html[data-theme="dark"] .section-picker-menu{background:rgba(42,43,52,.86);borde
   background:var(--plain-panel)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important
  }
 }
+
+
+/* Locale control in the floating iOS-style navigation bar. */
+.sp-language-picker{display:inline-flex;align-items:center;max-width:200px;min-width:0}
+.sp-language-picker select{appearance:none;-webkit-appearance:none;max-width:100%;min-height:36px;padding:7px 27px 7px 12px;border:1px solid var(--plain-line);border-radius:999px;color:var(--text);background:rgba(128,128,140,.11);font:600 12px/1.2 -apple-system,BlinkMacSystemFont,sans-serif;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-size:13px;background-position:right 9px center}
+.sp-language-picker select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+html[data-theme="dark"] .sp-language-picker select{background-color:rgba(255,255,255,.09)}
+@media(max-width:640px){.nav-links.open .sp-language-picker{margin:9px 10px 5px;max-width:calc(100% - 20px)}.sp-language-picker select{font-size:14px;min-height:40px}}
