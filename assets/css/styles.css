@@ -353,3 +353,119 @@ html[data-theme="dark"] .nav-shell,html[data-theme="dark"] .nav-links.open,html[
 @media(prefers-reduced-motion:reduce){
   .nav-links.open,.section-picker.open .section-picker-menu{animation:none!important;transform:none!important}
 }
+
+
+/* iOS 26-inspired design system: native-feeling grouped surfaces and floating glass. */
+:root{
+ --bg:#f2f2f7;--surface:#fff;--surface-strong:#fff;--card:#fff;
+ --text:#1c1c1e;--muted:#55565b;--faint:#777981;--border:#e4e5ea;
+ --border-light:#ececf0;--blue:#007aff;--blue-hover:#006be0;
+ --plain-panel:#fff;--plain-line:rgba(60,60,67,.12);
+ --content:1040px;--nav-height:64px
+}
+html[data-theme="dark"] body{
+ --bg:#0b0b0f;--surface:#1c1c1e;--surface-strong:#252529;--card:#1c1c1e;
+ --text:#f5f5f7;--muted:#c1c1c8;--faint:#9898a2;--border:#323238;
+ --border-light:#2c2c31;--blue:#0a84ff;--plain-panel:#1c1c1e;
+ --plain-line:rgba(255,255,255,.12)
+}
+html{scroll-padding-top:100px}
+body{
+ background:radial-gradient(ellipse 70% 35% at 50% -10%,rgba(125,171,255,.13),transparent),var(--bg);
+ background-attachment:scroll;color:var(--text);letter-spacing:-.018em;
+ -webkit-font-smoothing:antialiased
+}
+.nav-shell{
+ top:max(10px,env(safe-area-inset-top));height:auto;min-height:var(--nav-height);
+ width:min(1100px,calc(100% - 28px));border-radius:24px;
+ background:rgba(250,251,255,.72);border:1px solid rgba(255,255,255,.75);
+ box-shadow:0 10px 34px rgba(45,58,95,.13),inset 0 1px 0 rgba(255,255,255,.8);
+ backdrop-filter:blur(24px) saturate(190%)!important;
+ -webkit-backdrop-filter:blur(24px) saturate(190%)!important
+}
+html[data-theme="dark"] .nav-shell{background:rgba(37,38,48,.74);border-color:rgba(255,255,255,.15)}
+.nav{min-height:var(--nav-height);height:auto;padding:0 20px}
+.logo{font-size:20px;font-weight:750;letter-spacing:-.055em}
+.nav-links{gap:8px}
+.nav-link{font-size:14px;font-weight:600;padding:9px 15px;border-radius:999px}
+.nav-link.active{background:rgba(0,122,255,.12);color:var(--blue)}
+.icon-btn{width:38px;height:38px;border-radius:50%;background:rgba(125,125,145,.09);color:var(--text)}
+.simple-main{max-width:var(--content)}
+.simple-heading{padding:72px 0 36px}
+.simple-heading .eyebrow{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--blue)}
+.simple-heading h1{font-size:clamp(40px,7.2vw,70px);font-weight:750;letter-spacing:-.065em;line-height:1.06}
+.simple-heading h1 span{color:var(--text)}
+.simple-heading>p:last-of-type{max-width:540px;font-size:18px;line-height:1.45;color:var(--muted)}
+.simple-heading .button{border-radius:999px;background:var(--blue);color:white;padding:12px 23px;font-weight:650}
+.search,.simple-search,.library-search{
+ height:54px;border:1px solid var(--plain-line);border-radius:17px;
+ background:var(--plain-panel);box-shadow:0 3px 15px rgba(30,40,60,.035);
+ backdrop-filter:none!important;-webkit-backdrop-filter:none!important
+}
+.simple-library{margin-top:48px}
+.simple-list-heading{padding-bottom:16px}
+.simple-list-heading h2{font-size:29px;font-weight:750;letter-spacing:-.045em}
+.simple-list-heading p,.simple-count{font-size:13px;color:var(--faint)}
+.simple-filter{padding:15px 0 20px;border-top:1px solid var(--border-light);border-bottom:0;box-shadow:none}
+.simple-filter .section-picker-button{
+ border:1px solid var(--plain-line);border-radius:999px;
+ padding:8px 15px;background:var(--plain-panel);min-height:40px;
+ font-size:13px;font-weight:600;box-shadow:none;backdrop-filter:none!important;
+ -webkit-backdrop-filter:none!important
+}
+.simple-card-list{gap:16px}
+.simple-card,.collection-card,.shortcut-card,.card,.empty{
+ border:1px solid var(--plain-line);border-radius:23px;
+ background:var(--plain-panel);box-shadow:0 3px 18px rgba(28,36,56,.045);
+ backdrop-filter:none!important;-webkit-backdrop-filter:none!important
+}
+.simple-card{padding:25px;gap:16px}
+.simple-card h3{font-size:23px;font-weight:700;letter-spacing:-.04em}
+.simple-card p{font-size:14px;line-height:1.5;color:var(--muted)}
+.collection-icon{width:55px;height:55px;border-radius:16px;margin-bottom:16px}
+.simple-card-actions .simple-get,.button-blue{
+ background:var(--blue);color:#fff;border-radius:999px;border:0;
+ font-weight:650;box-shadow:none;backdrop-filter:none!important;
+ -webkit-backdrop-filter:none!important
+}
+.section-picker-menu{
+ border-radius:20px;background:rgba(252,252,255,.78);
+ border:1px solid rgba(255,255,255,.75);
+ box-shadow:0 18px 45px rgba(36,49,80,.18),inset 0 1px 0 rgba(255,255,255,.8);
+ backdrop-filter:blur(24px) saturate(190%)!important;
+ -webkit-backdrop-filter:blur(24px) saturate(190%)!important
+}
+html[data-theme="dark"] .section-picker-menu{background:rgba(42,43,52,.86);border-color:rgba(255,255,255,.16)}
+.section-picker.open .section-picker-menu{animation:sp-back-in-out .48s ease-in-out both!important}
+.site-footer{border-top:1px solid var(--border-light)}
+@media(max-width:640px){
+ :root{--nav-height:58px}
+ .wrap{width:calc(100% - 36px)}
+ .nav-shell{top:max(7px,env(safe-area-inset-top));width:calc(100% - 16px);border-radius:21px}
+ .nav{padding-inline:14px}
+ .nav-links.open{
+  background:rgba(250,251,255,.82);border:1px solid rgba(255,255,255,.72);
+  border-radius:20px;box-shadow:0 15px 40px rgba(35,48,83,.17);
+  backdrop-filter:blur(24px) saturate(190%)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(190%)!important;
+  animation:sp-back-in-out .48s ease-in-out both!important
+ }
+ html[data-theme="dark"] .nav-links.open{background:rgba(42,43,52,.87);border-color:rgba(255,255,255,.16)}
+ .nav-link{font-size:15px;padding:12px 14px}
+ .simple-heading{padding:45px 0 28px}
+ .simple-heading h1{font-size:clamp(36px,10vw,49px)}
+ .simple-heading>p:last-of-type{font-size:16px}
+ .simple-library{margin-top:32px}
+ .simple-list-heading h2{font-size:25px}
+ .simple-card-list{gap:13px}
+ .simple-card{padding:21px;border-radius:21px}
+ .simple-card h3{font-size:21px}
+}
+@media(prefers-reduced-motion:reduce){
+ .nav-links.open,.section-picker.open .section-picker-menu{animation:none!important}
+}
+@media(prefers-reduced-transparency:reduce){
+ .nav-shell,.nav-links.open,.section-picker-menu{
+  background:var(--plain-panel)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important
+ }
+}
