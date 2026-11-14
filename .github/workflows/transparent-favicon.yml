@@ -19,14 +19,14 @@ jobs:
           from pathlib import Path
           import re
           import cairosvg
-          from PIL import Image
+          from PIL import Image, ImageFilter
           source = Path('assets/icons/favicon.svg').read_text()
           source = source.replace('filter="url(#glassWarp)"', '')
           source = re.sub(r'<filter id="glassWarp"[^>]*>.*?</filter>', '', source, flags=re.S)
           cairosvg.svg2png(bytestring=source.encode(), write_to='assets/icons/favicon-transparent.png', output_width=512, output_height=512)
           img = Image.open('assets/icons/favicon-transparent.png').convert('RGBA')
           assert img.getpixel((0,0))[3] == 0, 'Expected transparent corner'
-          img.save('assets/icons/favicon-transparent.png', optimize=True)
+          # Remove dark fringe from the PNG only, preserving the original SVG.\n          alpha = img.getchannel('A')\n          alpha = alpha.filter(ImageFilter.MinFilter(7)).filter(ImageFilter.GaussianBlur(1.5))\n          img.putalpha(alpha)\n          img.save('assets/icons/favicon-transparent.png', optimize=True)
           PY
       - name: Commit generated PNG
         run: |
