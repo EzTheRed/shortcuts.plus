@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Shortcuts Plus icon">
 <defs>
 <linearGradient id="bottomBase" x1="194" y1="638" x2="830" y2="638" gradientUnits="userSpaceOnUse">
-<stop offset="0" stop-color="#218FAD"/>
-<stop offset=".23" stop-color="#1BAFB6"/>
+<stop offset="0" stop-color="#17496B"/>
+<stop offset=".23" stop-color="#167F98"/>
 <stop offset=".47" stop-color="#20B9B0"/>
 <stop offset=".69" stop-color="#119ED8"/>
 <stop offset=".86" stop-color="#087FF3"/>
@@ -37,18 +37,18 @@
 <path id="bottomDiamond" d="M512 389 C540 389 567 401 591 419 L795 579 C840 614 840 660 795 694 L590 852 C544 887 480 887 434 852 L229 694 C184 660 184 614 229 579 L433 419 C457 401 484 389 512 389 Z"/>
 <path id="topDiamond" d="M512 137 C540 137 566 148 592 168 L797 326 C840 359 840 410 797 443 L589 601 C544 635 480 635 435 601 L227 443 C184 410 184 359 227 326 L432 168 C458 148 484 137 512 137 Z"/>
 <clipPath id="topClip"><use href="#topDiamond"/></clipPath>
-</defs>
+<filter id="glassWarp" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".012 .018" numOctaves="2" seed="7" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="13" xChannelSelector="R" yChannelSelector="G"/></filter></defs>
 
-<g>
+<g filter="url(#glassWarp)">
 <use href="#bottomDiamond" fill="url(#bottomBase)"/>
 <use href="#bottomDiamond" fill="url(#bottomGreen)"/>
 </g>
-<g clip-path="url(#topClip)">
+<g clip-path="url(#topClip)" filter="url(#glassWarp)">
 <rect x="180" y="130" width="670" height="515" fill="url(#topBase)"/>
 <rect x="180" y="130" width="670" height="515" fill="url(#topPink)"/>
 <rect x="180" y="130" width="670" height="515" fill="url(#topBlueBlend)"/>
 <rect x="180" y="130" width="670" height="515" fill="url(#topLowerTint)"/>
 </g>
 
-<path d="M805 60 V350 M660 205 H950" fill="none" stroke="#FFFFFF" stroke-opacity=".83" stroke-width="76" stroke-linecap="round"/>
+<path d="M805 60 V350 M660 205 H950" fill="none" stroke="#111D48" stroke-opacity=".3" stroke-width="90" stroke-linecap="round" transform="translate(7 10)"/><path d="M805 60 V350 M660 205 H950" fill="none" stroke="#FFFFFF" stroke-opacity=".83" stroke-width="76" stroke-linecap="round"/>
 </svg>
